@@ -1,0 +1,142 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profiles",
+      "description": "Registered students, alumni, and administrators",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "btId": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "alumni", "faculty", "admin"] },
+        "branch": { "type": "string" },
+        "semester": { "type": "string" },
+        "yearOfStudy": { "type": "string" },
+        "academicTrack": { "type": "string" },
+        "avatar": { "type": "string" },
+        "isPro": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "role"]
+    },
+    "resources": {
+      "title": "Academic Resources & Notes",
+      "description": "PDFs, video lectures, code notes, and study materials",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string" },
+        "author": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "authorId": { "type": "string" },
+        "url": { "type": "string" },
+        "downloadUrl": { "type": "string" },
+        "rating": { "type": "number" },
+        "likesCount": { "type": "number" },
+        "viewCount": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "category", "type", "author"]
+    },
+    "chatGroups": {
+      "title": "WhatsApp-Style Chat Groups",
+      "description": "Study groups and project cohorts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "avatarColor": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "isPrivate": { "type": "boolean" },
+        "members": { "type": "array" },
+        "adminIds": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "category", "creatorId"]
+    },
+    "groupMessages": {
+      "title": "Group Chat Messages",
+      "description": "Messages sent inside chat groups with code and reactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "groupId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderAvatar": { "type": "string" },
+        "text": { "type": "string" },
+        "codeSnippet": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "reactions": { "type": "object" },
+        "replyTo": { "type": "object" }
+      },
+      "required": ["groupId", "senderId", "senderName"]
+    },
+    "directMessages": {
+      "title": "Direct Messages",
+      "description": "Direct peer-to-peer messages between students and alumni",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "codeSnippet": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["senderId", "receiverId", "text"]
+    },
+    "projectCredits": {
+      "title": "Project Credits & Academic Acknowledgements",
+      "description": "HOD information, Faculty Guides, and Student Contributors",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "hod": { "type": "object" },
+        "facultyGuides": { "type": "array" },
+        "studentContributors": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["hod", "facultyGuides", "studentContributors"]
+    },
+    "announcements": {
+      "title": "Platform Announcements",
+      "description": "Campus notices and broadcast updates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "message"]
+    },
+    "gigs": {
+      "title": "Freelance Student Gigs",
+      "description": "Student work contracts and project milestones",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "budget": { "type": "string" },
+        "category": { "type": "string" },
+        "clientName": { "type": "string" },
+        "postedAt": { "type": "string" }
+      },
+      "required": ["title", "budget", "clientName"]
+    }
+  }
+}

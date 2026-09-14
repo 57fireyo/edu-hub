@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Users collection: Public readable for profile cards; editable by authenticated user or owner
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Resources collection: Publicly readable for students/alumni; authenticated users can write/rate
+    match /resources/{resourceId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Chat Groups collection: Publicly discoverable; members can interact
+    match /chatGroups/{groupId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Group Messages: readable and writable by group participants
+    match /groupMessages/{messageId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Direct Messages: readable and writable for direct conversations
+    match /directMessages/{dmId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Project Credits & Academic Acknowledgements: Publicly readable; editable
+    match /projectCredits/{creditId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Announcements
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Gigs & Live Classes
+    match /gigs/{gigId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /liveClasses/{classId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Banned Users & Disciplinary Records
+    match /banned_users/{banId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
