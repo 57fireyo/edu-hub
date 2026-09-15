@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 // Default Supabase project configuration for EduHub
 const DEFAULT_SUPABASE_URL = 'https://slosofqdfxelmonorspt.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsb3NvZnFkZnhlbG1vbm9yc3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTAwMDAwMDAsImV4cCI6MjAyNTAwMDAwMH0.signature_placeholder';
+  'sb_publishable_m_LgqoY8RX6pzxeCRLtJTw_h5heX-mx';
 
 /**
  * Validates and normalizes the Supabase URL.
@@ -58,6 +58,7 @@ function resolveSupabaseUrl(): string {
 
 /**
  * Validates and normalizes the Supabase Anon Key.
+ * Supports standard JWT keys as well as new Supabase sb_publishable_* format keys.
  */
 function resolveSupabaseAnonKey(): string {
   const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string || '').trim();
@@ -65,11 +66,15 @@ function resolveSupabaseAnonKey(): string {
     return DEFAULT_SUPABASE_ANON_KEY;
   }
 
-  // Supabase anon keys are JWT tokens with 3 parts (header.payload.signature)
-  // If the user provided a non-JWT string like a password or short word, use fallback to avoid bad token initialization
-  if (envKey.length < 20 || !envKey.includes('.')) {
+  // Support both new publishable keys (sb_publishable_...) and legacy JWTs (header.payload.sig)
+  if (envKey.startsWith('sb_publishable_') || (envKey.length >= 20 && envKey.includes('.'))) {
+    return envKey;
+  }
+
+  // If key is clearly invalid
+  if (envKey.length < 15) {
     console.warn(
-      `[Supabase] The provided VITE_SUPABASE_ANON_KEY does not appear to be a valid Supabase Anon JWT key. Using default placeholder.`
+      `[Supabase] The provided VITE_SUPABASE_ANON_KEY does not appear to be a valid Supabase key. Using default.`
     );
     return DEFAULT_SUPABASE_ANON_KEY;
   }

@@ -529,8 +529,12 @@ export const ResourcesView: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       {item.type !== 'Video Lectures' && (
                         <a
-                          href={item.fileUrl || item.url || "https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf"}
-                          download="academic-compendium.pdf"
+                          href={
+                            item.id === 'res-dsa-pdf-1' || item.subjectCode === 'DSA'
+                              ? 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf'
+                              : item.fileUrl || item.downloadUrl || item.url || 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf'
+                          }
+                          download="dsa all practicals.pdf"
                           target="_blank"
                           rel="noreferrer"
                           className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"

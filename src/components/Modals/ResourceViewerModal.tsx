@@ -464,8 +464,12 @@ export const ResourceViewerModal: React.FC = () => {
           </div>
 
           <a
-            href={currentResource?.downloadUrl || currentResource?.fileUrl || "https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf"}
-            download="academic-compendium.pdf"
+            href={
+              currentResource?.id === 'res-dsa-pdf-1' || currentResource?.subjectCode === 'DSA'
+                ? 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf'
+                : currentResource?.downloadUrl || currentResource?.fileUrl || 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf'
+            }
+            download="dsa all practicals.pdf"
             target="_blank"
             rel="noreferrer"
           >
