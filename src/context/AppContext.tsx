@@ -24,6 +24,7 @@ import {
   AcademicBranch,
   CollegeStats,
   SupportedCodeLanguage,
+  CampusDirectoryUser,
 } from '../types';
 import {
   sampleResources,
@@ -42,6 +43,7 @@ import {
   initialAcademicSubjects,
   initialAcademicBranches,
   initialCollegeStats,
+  initialCampusDirectoryUsers,
 } from '../mockData';
 import confetti from 'canvas-confetti';
 import {
@@ -184,6 +186,8 @@ interface AppContextType {
 
   // Friends & Connections
   friends: FriendConnection[];
+  campusDirectoryUsers: CampusDirectoryUser[];
+  addCampusDirectoryUser: (user: Omit<CampusDirectoryUser, 'id'>) => void;
   sendFriendRequest: (user: { id: string; name: string; avatar: string; role: UserRole; branch: string; academicTrack?: string; bio?: string }) => void;
   acceptFriendRequest: (userId: string) => void;
   declineFriendRequest: (userId: string) => void;
@@ -197,7 +201,19 @@ interface AppContextType {
   activeDMUserId: string | null;
   setActiveDMUserId: (userId: string | null) => void;
   sendDirectMessage: (receiverId: string, text: string, codeSnippet?: string) => void;
-  startDMWithUser: (userId: string) => void;
+  startDMWithUser: (
+    userId: string,
+    userDetails?: {
+      name: string;
+      avatar: string;
+      role?: UserRole;
+      branch?: string;
+      academicTrack?: string;
+      bio?: string;
+    }
+  ) => void;
+  activeMessagesSubTab: 'groups' | 'dms' | 'search' | 'friends' | 'channels' | 'blocked';
+  setActiveMessagesSubTab: (tab: 'groups' | 'dms' | 'search' | 'friends' | 'channels' | 'blocked') => void;
 
   // Collaboration Chat (Channels)
   chatMessages: ChatMessage[];
@@ -411,6 +427,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [activeDMUserId, setActiveDMUserId] = useState<string | null>('u-elena');
 
+  // Campus Directory Users (Dynamic Search & Social Network)
+  const [campusDirectoryUsers, setCampusDirectoryUsers] = useState<CampusDirectoryUser[]>(() => {
+    const saved = localStorage.getItem('eduhub_campus_directory');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.warn('Failed parsing campus directory from storage:', e);
+      }
+    }
+    return initialCampusDirectoryUsers;
+  });
+
+  const [activeMessagesSubTab, setActiveMessagesSubTab] = useState<'groups' | 'dms' | 'search' | 'friends' | 'channels' | 'blocked'>('search');
+
   // Reports
   const [reports, setReports] = useState<ContentReport[]>(() => {
     const saved = localStorage.getItem('eduhub_reports');
@@ -615,6 +647,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('eduhub_friends', JSON.stringify(friends));
   }, [friends]);
+
+  useEffect(() => {
+    localStorage.setItem('eduhub_campus_directory', JSON.stringify(campusDirectoryUsers));
+  }, [campusDirectoryUsers]);
 
   useEffect(() => {
     localStorage.setItem('eduhub_dms', JSON.stringify(directMessages));
@@ -1127,9 +1163,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 1500);
   };
 
-  const startDMWithUser = (userId: string) => {
+  const addCampusDirectoryUser = (newUser: Omit<CampusDirectoryUser, 'id'>) => {
+    const created: CampusDirectoryUser = {
+      ...newUser,
+      id: `user-${Date.now()}`,
+    };
+    setCampusDirectoryUsers((prev) => [created, ...prev]);
+    showToast(`✓ Registered ${created.name} in Campus Social Directory!`);
+  };
+
+  const startDMWithUser = (
+    userId: string,
+    userDetails?: {
+      name: string;
+      avatar: string;
+      role?: UserRole;
+      branch?: string;
+      academicTrack?: string;
+      bio?: string;
+    }
+  ) => {
+    // Ensure this user exists in friends/contacts so the DM interface displays their information correctly
+    setFriends((prev) => {
+      const existing = prev.find((f) => f.userId === userId);
+      if (existing) return prev;
+
+      const dirUser = campusDirectoryUsers.find((u) => u.id === userId);
+      const newConn: FriendConnection = {
+        id: `conn-${Date.now()}`,
+        userId,
+        name: userDetails?.name || dirUser?.name || 'Classmate',
+        avatar:
+          userDetails?.avatar ||
+          dirUser?.avatar ||
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+        role: userDetails?.role || dirUser?.role || 'student',
+        branch: userDetails?.branch || dirUser?.branch || 'Engineering',
+        academicTrack: userDetails?.academicTrack || dirUser?.academicTrack || 'JDCOEM Campus Track',
+        status: 'friend', // Connected for direct messaging
+        bio: userDetails?.bio || dirUser?.bio || 'Campus classmate',
+        isOnline: dirUser ? dirUser.isOnline : true,
+        lastSeen: dirUser?.lastSeen || 'Active now',
+      };
+      return [newConn, ...prev];
+    });
+
     setActiveDMUserId(userId);
+    setActiveMessagesSubTab('dms');
     setActiveTab('messages');
+    const partnerName = userDetails?.name || campusDirectoryUsers.find((u) => u.id === userId)?.name || 'classmate';
+    showToast(`💬 Opened private chat with ${partnerName}`);
   };
 
   // Gigs & Applications
@@ -2131,6 +2214,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteReport,
         resolveReport,
         friends,
+        campusDirectoryUsers,
+        addCampusDirectoryUser,
         sendFriendRequest,
         acceptFriendRequest,
         declineFriendRequest,
@@ -2143,6 +2228,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveDMUserId,
         sendDirectMessage,
         startDMWithUser,
+        activeMessagesSubTab,
+        setActiveMessagesSubTab,
         chatMessages,
         activeChannel,
         setActiveChannel,

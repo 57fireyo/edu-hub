@@ -45,19 +45,19 @@ export const CreditsEditorModal: React.FC<CreditsEditorModalProps> = ({
   const [activeTab, setActiveTab] = useState<'project' | 'hod' | 'contributors' | 'faculty'>('contributors');
 
   // Form states
-  const [projectTitle, setProjectTitle] = useState(projectCredits.projectTitle);
-  const [institutionName, setInstitutionName] = useState(projectCredits.institutionName);
-  const [departmentName, setDepartmentName] = useState(projectCredits.departmentName);
-  const [academicYear, setAcademicYear] = useState(projectCredits.academicYear);
-  const [acknowledgements, setAcknowledgements] = useState(projectCredits.acknowledgements);
+  const [projectTitle, setProjectTitle] = useState(projectCredits?.projectTitle || '');
+  const [institutionName, setInstitutionName] = useState(projectCredits?.institutionName || '');
+  const [departmentName, setDepartmentName] = useState(projectCredits?.departmentName || '');
+  const [academicYear, setAcademicYear] = useState(projectCredits?.academicYear || '');
+  const [acknowledgements, setAcknowledgements] = useState(projectCredits?.acknowledgements || '');
 
   // HOD states
-  const [hodName, setHodName] = useState(projectCredits.hod.name);
-  const [hodTitle, setHodTitle] = useState(projectCredits.hod.title);
-  const [hodDept, setHodDept] = useState(projectCredits.hod.department);
-  const [hodEmail, setHodEmail] = useState(projectCredits.hod.email);
-  const [hodAvatar, setHodAvatar] = useState(projectCredits.hod.avatar);
-  const [hodMessage, setHodMessage] = useState(projectCredits.hod.message);
+  const [hodName, setHodName] = useState(projectCredits?.hod?.name || '');
+  const [hodTitle, setHodTitle] = useState(projectCredits?.hod?.title || '');
+  const [hodDept, setHodDept] = useState(projectCredits?.hod?.department || '');
+  const [hodEmail, setHodEmail] = useState(projectCredits?.hod?.email || '');
+  const [hodAvatar, setHodAvatar] = useState(projectCredits?.hod?.avatar || '');
+  const [hodMessage, setHodMessage] = useState(projectCredits?.hod?.message || '');
 
   // Contributor Form
   const [editingContribId, setEditingContribId] = useState<string | null>(null);
@@ -75,6 +75,24 @@ export const CreditsEditorModal: React.FC<CreditsEditorModalProps> = ({
   const [fDesignation, setFDesignation] = useState('');
   const [fDept, setFDept] = useState('');
   const [fAvatar, setFAvatar] = useState('');
+
+  useEffect(() => {
+    if (isOpen && projectCredits) {
+      setProjectTitle(projectCredits.projectTitle || '');
+      setInstitutionName(projectCredits.institutionName || '');
+      setDepartmentName(projectCredits.departmentName || '');
+      setAcademicYear(projectCredits.academicYear || '');
+      setAcknowledgements(projectCredits.acknowledgements || '');
+      if (projectCredits.hod) {
+        setHodName(projectCredits.hod.name || '');
+        setHodTitle(projectCredits.hod.title || '');
+        setHodDept(projectCredits.hod.department || '');
+        setHodEmail(projectCredits.hod.email || '');
+        setHodAvatar(projectCredits.hod.avatar || '');
+        setHodMessage(projectCredits.hod.message || '');
+      }
+    }
+  }, [isOpen, projectCredits]);
 
   useEffect(() => {
     if (initialSelectedContributor) {

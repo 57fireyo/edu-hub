@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   Users2,
   Send,
@@ -48,6 +49,9 @@ export const GroupChatTab: React.FC = () => {
     showToast,
   } = useApp();
 
+  const { user } = useAuth();
+  const currentUserId = user?.id || 'user-101';
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -70,8 +74,8 @@ export const GroupChatTab: React.FC = () => {
     ? groupMessages[currentGroup.id] || []
     : [];
 
-  const isUserMember = currentGroup?.members.some((m) => m.userId === 'user-101') ?? false;
-  const isUserAdmin = currentGroup?.adminIds.includes('user-101') || currentGroup?.creatorId === 'user-101';
+  const isUserMember = currentGroup?.members.some((m) => m.userId === currentUserId || m.userId === 'user-101') ?? false;
+  const isUserAdmin = currentGroup?.adminIds.includes(currentUserId) || currentGroup?.adminIds.includes('user-101') || currentGroup?.creatorId === currentUserId || currentGroup?.creatorId === 'user-101';
 
   // Auto scroll to bottom of chat
   useEffect(() => {
@@ -184,7 +188,7 @@ export const GroupChatTab: React.FC = () => {
           ) : (
             filteredGroups.map((group) => {
               const isSelected = currentGroup?.id === group.id;
-              const isMember = group.members.some((m) => m.userId === 'user-101');
+              const isMember = group.members.some((m) => m.userId === currentUserId || m.userId === 'user-101');
 
               return (
                 <div
@@ -350,7 +354,7 @@ export const GroupChatTab: React.FC = () => {
                 );
               }
 
-              const isMe = msg.senderId === 'user-101';
+              const isMe = msg.senderId === currentUserId || msg.senderId === 'user-101';
 
               return (
                 <div
@@ -446,7 +450,7 @@ export const GroupChatTab: React.FC = () => {
                               key={emoji}
                               onClick={() => reactToGroupMessage(currentGroup.id, msg.id, emoji)}
                               className={`px-1.5 py-0.5 rounded-full text-[11px] flex items-center gap-1 transition-transform active:scale-95 ${
-                                users.includes('user-101')
+                                users.includes(currentUserId) || users.includes('user-101')
                                   ? 'bg-emerald-500/30 text-white font-bold border border-emerald-400'
                                   : 'bg-black/10 dark:bg-white/10 text-slate-300'
                               }`}
@@ -742,6 +746,7 @@ export const GroupChatTab: React.FC = () => {
                           </span>
                         ) : (
                           isUserAdmin &&
+                          member.userId !== currentUserId &&
                           member.userId !== 'user-101' && (
                             <button
                               onClick={() =>

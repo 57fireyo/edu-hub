@@ -21,8 +21,10 @@ import {
   Hash,
   Clock,
   MessagesSquare,
+  Plus,
 } from 'lucide-react';
 import { GroupChatTab } from './GroupChatTab';
+import { UserSearchAndSocialTab } from './UserSearchAndSocialTab';
 
 export const MessagesView: React.FC = () => {
   const {
@@ -31,6 +33,7 @@ export const MessagesView: React.FC = () => {
     activeChannel,
     setActiveChannel,
     friends,
+    campusDirectoryUsers,
     directMessages,
     activeDMUserId,
     setActiveDMUserId,
@@ -43,6 +46,9 @@ export const MessagesView: React.FC = () => {
     blockUser,
     unblockUser,
     sendDirectMessage,
+    startDMWithUser,
+    activeMessagesSubTab,
+    setActiveMessagesSubTab,
     openReportModal,
     setIsProfileEditModalOpen,
     showToast,
@@ -50,8 +56,13 @@ export const MessagesView: React.FC = () => {
 
   const { user } = useAuth();
 
-  // Navigation mode: 'groups' | 'dms' | 'friends' | 'channels' | 'blocked'
-  const [activeTabMode, setActiveTabMode] = useState<'groups' | 'dms' | 'friends' | 'channels' | 'blocked'>('groups');
+  // Navigation mode: 'groups' | 'dms' | 'search' | 'friends' | 'channels' | 'blocked'
+  const activeTabMode = activeMessagesSubTab;
+  const setActiveTabMode = setActiveMessagesSubTab;
+
+  // New DM search modal state
+  const [isNewDMSearchModalOpen, setIsNewDMSearchModalOpen] = useState<boolean>(false);
+  const [newDMSearchText, setNewDMSearchText] = useState<string>('');
 
   // DM Input State
   const [dmInput, setDmInput] = useState<string>('');
@@ -64,65 +75,6 @@ export const MessagesView: React.FC = () => {
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [directorySearch, setDirectorySearch] = useState<string>('');
-
-  // Campus directory discovery dataset
-  const campusDirectory = [
-    {
-      id: 'user-elena',
-      name: 'Elena Rostova',
-      role: 'alumni' as const,
-      branch: 'Computer Science & Engineering',
-      academicTrack: 'Distributed Systems & Cloud',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
-      bio: 'Senior Backend Engineer @ CloudScale. Available for mentorship and code reviews.',
-      skills: ['Distributed Systems', 'Go', 'Kubernetes', 'gRPC'],
-      isOnline: true,
-    },
-    {
-      id: 'user-david',
-      name: 'David Kalu',
-      role: 'student' as const,
-      branch: 'Information Technology',
-      academicTrack: 'Full Stack & DevOps',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-      bio: '3rd Year IT student passionate about React, TypeScript, and open source tooling.',
-      skills: ['React', 'Next.js', 'PostgreSQL', 'Docker'],
-      isOnline: true,
-    },
-    {
-      id: 'user-priya',
-      name: 'Priya Sharma',
-      role: 'student' as const,
-      branch: 'AI & Data Science',
-      academicTrack: 'Deep Learning & NLP',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      bio: 'Working on LLM fine-tuning and transformer quantization research.',
-      skills: ['PyTorch', 'Transformers', 'Python', 'FastAPI'],
-      isOnline: false,
-    },
-    {
-      id: 'user-marcus',
-      name: 'Marcus Vance',
-      role: 'student' as const,
-      branch: 'Cybersecurity',
-      academicTrack: 'Network Defense & Cryptography',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-      bio: 'CTF enthusiast and pentesting explorer. Looking for freelance security audit gigs.',
-      skills: ['Pen Testing', 'Network Security', 'Linux', 'Rust'],
-      isOnline: true,
-    },
-    {
-      id: 'user-mentor-chen',
-      name: 'Dr. Michael Chen',
-      role: 'alumni' as const,
-      branch: 'Computer Science & Engineering',
-      academicTrack: 'Algorithms & Computational Theory',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200',
-      bio: 'Faculty Lead and former principal researcher. Mentoring students on algorithmic proof systems.',
-      skills: ['Algorithms', 'System Design', 'Compiler Optimization'],
-      isOnline: true,
-    },
-  ];
 
   // Channels
   const studyChannels = [
@@ -217,6 +169,21 @@ export const MessagesView: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTabMode('search')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              activeTabMode === 'search'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span>Search & Make Friends</span>
+            <span className="px-1.5 py-0.2 bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 text-[10px] rounded-full font-bold">
+              {campusDirectoryUsers.length}
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTabMode('friends')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
               activeTabMode === 'friends'
@@ -225,7 +192,7 @@ export const MessagesView: React.FC = () => {
             }`}
           >
             <Users2 className="w-3.5 h-3.5" />
-            <span>Friends & Directory</span>
+            <span>Friends ({activeFriends.length})</span>
             {incomingRequests.length > 0 && (
               <span className="px-1.5 py-0.2 bg-rose-500 text-white text-[10px] rounded-full font-bold">
                 {incomingRequests.length}
@@ -291,22 +258,43 @@ export const MessagesView: React.FC = () => {
       {/* Mode 0: WhatsApp-style Group Chats */}
       {activeTabMode === 'groups' && <GroupChatTab />}
 
+      {/* Mode: Search Section - Search Classmates, Make Friends & Private Chat */}
+      {activeTabMode === 'search' && (
+        <UserSearchAndSocialTab
+          onOpenDM={(targetUserId) => {
+            setActiveDMUserId(targetUserId);
+            setActiveTabMode('dms');
+          }}
+        />
+      )}
+
       {/* Mode 1: Direct Messages */}
       {activeTabMode === 'dms' && (
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
           {/* Left Column: Direct Message Friends */}
           <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/60 dark:bg-slate-900/60">
-            <div className="p-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="relative">
+            <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+              <div className="relative flex-1">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Filter classmate chats..."
+                  placeholder="Filter chats or search names..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-800 text-xs rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
                 />
               </div>
+              <button
+                onClick={() => {
+                  setNewDMSearchText('');
+                  setIsNewDMSearchModalOpen(true);
+                }}
+                className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs transition-colors shadow-2xs shrink-0 flex items-center gap-1"
+                title="Search student name & start private chat"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px] font-semibold">New</span>
+              </button>
             </div>
 
             {/* Direct message contact list */}
@@ -315,78 +303,222 @@ export const MessagesView: React.FC = () => {
                 <div className="p-6 text-center text-xs text-slate-500 space-y-2">
                   <UserPlus className="w-8 h-8 mx-auto text-slate-400" />
                   <p className="font-semibold text-slate-700 dark:text-slate-300">No Connected Friends</p>
-                  <p className="text-[11px]">Add classmates from the Friends directory to start chatting personally.</p>
-                  <button
-                    onClick={() => setActiveTabMode('friends')}
-                    className="mt-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-semibold text-xs"
-                  >
-                    Browse Students
-                  </button>
+                  <p className="text-[11px]">Search any student by name to start chatting or send friend requests.</p>
+                  <div className="flex flex-col gap-2 mt-3">
+                    <button
+                      onClick={() => setIsNewDMSearchModalOpen(true)}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-xs transition-colors shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <Search className="w-3.5 h-3.5" />
+                      <span>Search Classmates by Name</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTabMode('search')}
+                      className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold text-xs transition-colors"
+                    >
+                      Browse Social Directory
+                    </button>
+                  </div>
                 </div>
               ) : (
-                activeFriends
-                  .filter((f) =>
-                    !searchQuery || (f.name && f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                  )
-                  .map((friend) => {
-                    const isSelected = currentDmPartner?.userId === friend.userId;
-                    const partnerMsgs = directMessages[friend.userId] || [];
-                    const lastMsg = partnerMsgs[partnerMsgs.length - 1];
+                <>
+                  {activeFriends
+                    .filter((f) =>
+                      !searchQuery || (f.name && f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                    )
+                    .map((friend) => {
+                      const isSelected = currentDmPartner?.userId === friend.userId;
+                      const partnerMsgs = directMessages[friend.userId] || [];
+                      const lastMsg = partnerMsgs[partnerMsgs.length - 1];
 
-                    return (
-                      <button
-                        key={friend.id}
-                        onClick={() => setActiveDMUserId(friend.userId)}
-                        className={`w-full text-left p-3 rounded-xl transition-all flex items-center gap-3 relative ${
-                          isSelected
-                            ? 'bg-white dark:bg-slate-800 border border-indigo-500 shadow-xs'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
-                        }`}
-                      >
-                        <div className="relative">
-                          <img
-                            src={friend.avatar}
-                            alt={friend.name}
-                            className="w-10 h-10 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
-                          />
-                          <span
-                            className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 ${
-                              friend.isOnline ? 'bg-emerald-500' : 'bg-slate-400'
-                            }`}
-                          ></span>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h4
-                              className={`text-xs font-bold truncate ${
-                                isSelected
-                                  ? 'text-indigo-600 dark:text-indigo-400'
-                                  : 'text-slate-900 dark:text-white'
+                      return (
+                        <button
+                          key={friend.id}
+                          onClick={() => setActiveDMUserId(friend.userId)}
+                          className={`w-full text-left p-3 rounded-xl transition-all flex items-center gap-3 relative ${
+                            isSelected
+                              ? 'bg-white dark:bg-slate-800 border border-indigo-500 shadow-xs'
+                              : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
+                          }`}
+                        >
+                          <div className="relative">
+                            <img
+                              src={friend.avatar}
+                              alt={friend.name}
+                              className="w-10 h-10 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                            />
+                            <span
+                              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 ${
+                                friend.isOnline ? 'bg-emerald-500' : 'bg-slate-400'
                               }`}
-                            >
-                              {friend.name}
-                            </h4>
-                            <span className="text-[10px] text-slate-400">
-                              {lastMsg?.timestamp || friend.lastSeen || 'Active'}
-                            </span>
+                            ></span>
                           </div>
-                          <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                            {lastMsg?.text || `${friend.branch} • ${friend.academicTrack}`}
-                          </p>
-                        </div>
 
-                        {(friend.unreadDMsCount || 0) > 0 && (
-                          <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[10px] font-bold rounded-full">
-                            {friend.unreadDMsCount}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <h4
+                                className={`text-xs font-bold truncate ${
+                                  isSelected
+                                    ? 'text-indigo-600 dark:text-indigo-400'
+                                    : 'text-slate-900 dark:text-white'
+                                }`}
+                              >
+                                {friend.name}
+                              </h4>
+                              <span className="text-[10px] text-slate-400">
+                                {lastMsg?.timestamp || friend.lastSeen || 'Active'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                              {lastMsg?.text || `${friend.branch} • ${friend.academicTrack}`}
+                            </p>
+                          </div>
+
+                          {(friend.unreadDMsCount || 0) > 0 && (
+                            <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[10px] font-bold rounded-full">
+                              {friend.unreadDMsCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        setNewDMSearchText('');
+                        setIsNewDMSearchModalOpen(true);
+                      }}
+                      className="w-full py-2 bg-indigo-50/80 hover:bg-indigo-100/80 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Search & Message Any Student</span>
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </aside>
+
+          {/* Quick Search Modal for DM */}
+          {isNewDMSearchModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                      <Search className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                        Start Private Chat with Any Classmate
+                      </h3>
+                      <p className="text-[10px] text-slate-500">
+                        Search by student name, branch, or skills
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsNewDMSearchModalOpen(false)}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Type student name (e.g. Elena, Bhavesh, Priya, Marcus)..."
+                      value={newDMSearchText}
+                      onChange={(e) => setNewDMSearchText(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 text-xs rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto p-2 space-y-1">
+                  {campusDirectoryUsers
+                    .filter((p) => {
+                      if (!newDMSearchText.trim()) return true;
+                      const q = newDMSearchText.toLowerCase().trim();
+                      return (
+                        p.name.toLowerCase().includes(q) ||
+                        p.branch.toLowerCase().includes(q) ||
+                        p.skills.some((s) => s.toLowerCase().includes(q))
+                      );
+                    })
+                    .map((peer) => {
+                      return (
+                        <div
+                          key={peer.id}
+                          className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors flex items-center justify-between gap-3 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="relative shrink-0">
+                              <img
+                                src={peer.avatar}
+                                alt={peer.name}
+                                className="w-9 h-9 rounded-full object-cover"
+                              />
+                              <span
+                                className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ring-2 ring-white dark:ring-slate-900 ${
+                                  peer.isOnline ? 'bg-emerald-500' : 'bg-slate-400'
+                                }`}
+                              ></span>
+                            </div>
+                            <div className="truncate">
+                              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                {peer.name}
+                              </h4>
+                              <p className="text-[10px] text-slate-500 truncate">
+                                {peer.branch} • {peer.role}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              startDMWithUser(peer.id, {
+                                name: peer.name,
+                                avatar: peer.avatar,
+                                role: peer.role,
+                                branch: peer.branch,
+                                academicTrack: peer.academicTrack,
+                                bio: peer.bio,
+                              });
+                              setIsNewDMSearchModalOpen(false);
+                            }}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1 shrink-0 transition-colors shadow-2xs"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Chat</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-slate-500">
+                    Want to add new friends or view full profiles?
+                  </span>
+                  <button
+                    onClick={() => {
+                      setIsNewDMSearchModalOpen(false);
+                      setActiveTabMode('search');
+                    }}
+                    className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline text-xs"
+                  >
+                    Open Search Section →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Right Column: Active DM Chat Canvas */}
           <div className="flex-1 flex flex-col bg-white dark:bg-slate-900">
@@ -587,12 +719,24 @@ export const MessagesView: React.FC = () => {
                 <p className="text-xs max-w-xs">
                   Connect with students and alumni from your department to exchange project insights.
                 </p>
-                <button
-                  onClick={() => setActiveTabMode('friends')}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold"
-                >
-                  Explore Campus Directory
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => {
+                      setNewDMSearchText('');
+                      setIsNewDMSearchModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>Search Classmates by Name</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTabMode('search')}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
+                  >
+                    Explore Search & Make Friends
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -658,12 +802,24 @@ export const MessagesView: React.FC = () => {
                 <UserCheck className="w-4 h-4 text-emerald-500" />
                 <span>Connected Friends & Study Partners ({activeFriends.length})</span>
               </h3>
-              <span className="text-xs text-slate-500">Peer Collaboration</span>
+              <button
+                onClick={() => setActiveTabMode('search')}
+                className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Find & Add More Friends</span>
+              </button>
             </div>
 
             {activeFriends.length === 0 ? (
-              <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-                You have no connected friends yet. Explore students in the directory below and send requests!
+              <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-500 space-y-3">
+                <p>You have no connected friends yet. Search students by name or explore the directory below!</p>
+                <button
+                  onClick={() => setActiveTabMode('search')}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-xs shadow-xs"
+                >
+                  Open Search & Social Section
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -753,20 +909,29 @@ export const MessagesView: React.FC = () => {
                 </p>
               </div>
 
-              <div className="relative w-full sm:w-64">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search by name, skill, branch..."
-                  value={directorySearch}
-                  onChange={(e) => setDirectorySearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-900 text-xs rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
-                />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveTabMode('search')}
+                  className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-xl flex items-center gap-1"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Full Search Page</span>
+                </button>
+                <div className="relative w-full sm:w-56">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search name, skill, branch..."
+                    value={directorySearch}
+                    onChange={(e) => setDirectorySearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-900 text-xs rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {campusDirectory
+              {campusDirectoryUsers
                 .filter((p) => {
                   if (!directorySearch) return true;
                   const q = directorySearch.toLowerCase();
@@ -780,6 +945,7 @@ export const MessagesView: React.FC = () => {
                   const existingConn = friends.find((f) => f.userId === peer.id);
                   const isFriend = existingConn?.status === 'friend';
                   const isPendingOut = existingConn?.status === 'pending_outgoing';
+                  const isPendingIn = existingConn?.status === 'pending_incoming';
                   const isBlocked = existingConn?.status === 'blocked';
 
                   return (
@@ -821,29 +987,45 @@ export const MessagesView: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                        <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          Available
-                        </span>
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                        {/* 1-on-1 Private Chat Button */}
+                        <button
+                          onClick={() => {
+                            startDMWithUser(peer.id, {
+                              name: peer.name,
+                              avatar: peer.avatar,
+                              role: peer.role,
+                              branch: peer.branch,
+                              academicTrack: peer.academicTrack,
+                              bio: peer.bio,
+                            });
+                            setActiveTabMode('dms');
+                          }}
+                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 font-semibold text-xs rounded-xl flex items-center gap-1 transition-colors"
+                          title={`Start private chat with ${peer.name}`}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Private Chat</span>
+                        </button>
 
                         {isFriend ? (
-                          <button
-                            onClick={() => {
-                              setActiveDMUserId(peer.id);
-                              setActiveTabMode('dms');
-                            }}
-                            className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold text-xs rounded-xl flex items-center gap-1"
-                          >
-                            <MessageSquare className="w-3 h-3" />
-                            <span>Chat</span>
-                          </button>
+                          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Friends</span>
+                          </span>
                         ) : isPendingOut ? (
                           <button
                             onClick={() => cancelFriendRequest(peer.id)}
                             className="px-3 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 text-xs font-semibold rounded-xl"
                           >
                             Cancel Request
+                          </button>
+                        ) : isPendingIn ? (
+                          <button
+                            onClick={() => acceptFriendRequest(peer.id)}
+                            className="px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-xl"
+                          >
+                            Accept
                           </button>
                         ) : isBlocked ? (
                           <span className="px-3 py-1 bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl">

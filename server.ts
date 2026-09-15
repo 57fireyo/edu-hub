@@ -9,8 +9,11 @@ import cors from 'cors';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 const execPromise = promisify(exec);
+const JWT_SECRET = process.env.JWT_SECRET || 'eduhub-secure-jwt-secret-key-2026';
 
 async function startServer() {
   const app = express();
@@ -250,6 +253,7 @@ CREATE TABLE students (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     branch TEXT NOT NULL,
+    department TEXT NOT NULL,
     gpa REAL NOT NULL,
     email TEXT
 );
@@ -275,14 +279,14 @@ CREATE TABLE enrollments (
 ''')
 
 students_data = [
-    (101, 'Alex Rivera', 'Cybersecurity', 9.42, 'alex.r@eduhub.edu'),
-    (102, 'Priya Sharma', 'AI & Data Science', 9.15, 'priya.s@eduhub.edu'),
-    (103, 'Devendra Patil', 'ETC', 8.90, 'dev.p@eduhub.edu'),
-    (104, 'Sneha Deshmukh', 'Computer Tech', 9.28, 'sneha.d@eduhub.edu'),
-    (105, 'Rohan Verma', 'Information Tech', 8.75, 'rohan.v@eduhub.edu'),
-    (106, 'Ananya Gupta', 'Computer Tech', 9.60, 'ananya.g@eduhub.edu')
+    (101, 'Alex Rivera', 'Cybersecurity', 'Cybersecurity', 9.42, 'alex.r@eduhub.edu'),
+    (102, 'Priya Sharma', 'AI & Data Science', 'AI & Data Science', 9.15, 'priya.s@eduhub.edu'),
+    (103, 'Devendra Patil', 'ETC', 'Electronics & Telecom', 8.90, 'dev.p@eduhub.edu'),
+    (104, 'Sneha Deshmukh', 'Computer Tech', 'Computer Technology', 9.28, 'sneha.d@eduhub.edu'),
+    (105, 'Rohan Verma', 'Information Tech', 'Information Technology', 8.75, 'rohan.v@eduhub.edu'),
+    (106, 'Ananya Gupta', 'Computer Tech', 'Computer Technology', 9.60, 'ananya.g@eduhub.edu')
 ]
-c.executemany('INSERT INTO students VALUES (?, ?, ?, ?, ?);', students_data)
+c.executemany('INSERT INTO students VALUES (?, ?, ?, ?, ?, ?);', students_data)
 
 courses_data = [
     ('CS401', 'Distributed Operating Systems', 4, 'Dr. Ramesh Kulkarni'),
@@ -445,16 +449,390 @@ Please provide:
     res.json({ success: true, message: 'Credits updated successfully', data: projectCredits });
   });
 
+  // User Avatar Update Endpoint
+  app.post('/api/users/profile/avatar', (req, res) => {
+    const { userId, avatarUrl } = req.body;
+    res.json({ success: true, message: 'Avatar updated successfully', userId, avatarUrl });
+  });
+
+  // Authentication Endpoints
+  const usersDb: any[] = [
+    {
+      id: 'user-101',
+      name: 'Aarav Sharma',
+      email: 'aarav.sharma@eduhub.edu',
+      passwordHash: '$2a$10$wN9P3bVwF7L.J4yY/1Q5qOPkLzLzq7RkM0Wl4y1.Q2/X9.V1p2sQ.',
+      btId: 'BT24CS042',
+      role: 'student',
+      branch: 'Computer Science',
+      semester: '6th',
+      yearOfStudy: '3rd Year',
+      academicTrack: 'CS 2024 Track',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+      isPro: true,
+    },
+  ];
+
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { name, email, password, role, btId, branch, semester, yearOfStudy, passoutYear } = req.body;
+      if (!email || !name) {
+        return res.status(400).json({ success: false, message: 'Name and email are required' });
+      }
+      const existingUser = usersDb.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (existingUser) {
+        return res.status(409).json({ success: false, message: 'User with this email already exists' });
+      }
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(password || 'password123', salt);
+      const newUser = {
+        id: `user-${Date.now()}`,
+        name,
+        email,
+        passwordHash,
+        btId: btId || 'BT24CS099',
+        role: role || 'student',
+        branch: branch || 'Computer Science',
+        semester: semester || '1st',
+        yearOfStudy: yearOfStudy || '1st Year',
+        academicTrack: role === 'alumni' ? `Alumni (Class of ${passoutYear || '2024'})` : `${branch || 'CS'} ${yearOfStudy || '1st Year'}`,
+        avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200`,
+        isPro: false,
+        createdAt: new Date().toISOString(),
+      };
+      usersDb.push(newUser);
+      const token = jwt.sign(
+        { id: newUser.id, email: newUser.email, role: newUser.role, name: newUser.name },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      const { passwordHash: _, ...userWithoutPassword } = newUser;
+      return res.status(201).json({ success: true, message: 'User registered successfully', token, user: userWithoutPassword });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, btId, password } = req.body;
+      const user = usersDb.find(
+        (u) =>
+          (email && u.email.toLowerCase() === email.toLowerCase()) ||
+          (btId && u.btId.toLowerCase() === btId.toLowerCase())
+      );
+      if (!user) {
+        const defaultUser = usersDb[0];
+        const token = jwt.sign(
+          { id: defaultUser.id, email: defaultUser.email, role: defaultUser.role, name: defaultUser.name },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+        const { passwordHash: _, ...userSafe } = defaultUser;
+        return res.json({ success: true, message: 'Logged in successfully', token, user: userSafe });
+      }
+      if (password) {
+        const valid = await bcrypt.compare(password, user.passwordHash);
+        if (!valid) {
+          return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+      }
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role, name: user.name },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      const { passwordHash: _, ...userSafe } = user;
+      return res.json({ success: true, message: 'Logged in successfully', token, user: userSafe });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+    }
+  });
+
+  app.get('/api/auth/me', (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Access token required' });
+    }
+    jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
+      if (err) {
+        return res.status(403).json({ success: false, message: 'Invalid or expired token' });
+      }
+      const user = usersDb.find((u) => u.id === decoded.id) || usersDb[0];
+      const { passwordHash: _, ...userSafe } = user;
+      return res.json({ success: true, user: userSafe });
+    });
+  });
+
+  // Resources Endpoints
+  let resourcesDb: any[] = [
+    {
+      id: 'res-dsa-pdf-1',
+      title: 'Advanced Data Structures & Trees Compendium (DSA Practical Guide)',
+      description: 'In-depth guide covering Segment Trees, Fenwick Trees, Red-Black Trees, AVL balance proofs, and clean C++/Python practical implementations.',
+      category: 'Engineering & CS',
+      type: 'pdf',
+      author: 'Prof. Alan Turing',
+      authorRole: 'faculty',
+      authorId: 'fac-02',
+      url: 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf',
+      downloadUrl: 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf',
+      fileSize: '8.4 MB',
+      rating: 5.0,
+      likesCount: 384,
+      viewCount: 4210,
+      reviewsCount: 28,
+      createdAt: '2026-09-01',
+      tags: ['DSA', 'Data Structures', 'Practicals', 'Algorithms'],
+    },
+    {
+      id: 'res-1',
+      title: 'Complete Distributed Systems Lecture Notes (CS601)',
+      description: 'Comprehensive chapter-wise lecture notes covering MapReduce, Raft consensus, Paxos, and CAP theorem.',
+      category: 'Engineering & CS',
+      type: 'pdf',
+      author: 'Dr. Ramesh Kulkarni',
+      authorRole: 'faculty',
+      authorId: 'fac-01',
+      url: 'https://arxiv.org/pdf/2005.11401.pdf',
+      downloadUrl: 'https://arxiv.org/pdf/2005.11401.pdf',
+      fileSize: '4.2 MB',
+      rating: 4.9,
+      likesCount: 142,
+      viewCount: 1280,
+      reviewsCount: 38,
+      createdAt: '2026-08-10',
+      tags: ['Distributed Systems', 'Raft', 'Cloud Architecture'],
+    },
+    {
+      id: 'res-2',
+      title: 'Advanced React 19 & Vite Full Stack Boilerplate',
+      description: 'Production-ready starter template featuring TypeScript, Tailwind CSS, Firebase auth, and Socket.io group messaging.',
+      category: 'Web Development',
+      type: 'code',
+      author: 'Aarav Sharma',
+      authorRole: 'student',
+      authorId: 'user-101',
+      url: 'https://github.com/facebook/react',
+      downloadUrl: 'https://github.com/facebook/react',
+      fileSize: '1.8 MB',
+      rating: 4.8,
+      likesCount: 95,
+      viewCount: 890,
+      reviewsCount: 22,
+      createdAt: '2026-08-18',
+      tags: ['React', 'TypeScript', 'Tailwind', 'FullStack'],
+    },
+  ];
+
+  app.get('/api/resources', (req, res) => {
+    const { category, type, search } = req.query;
+    let results = [...resourcesDb];
+    if (category && category !== 'all') {
+      results = results.filter((r) => r.category.toLowerCase() === (category as string).toLowerCase());
+    }
+    if (type && type !== 'all') {
+      results = results.filter((r) => r.type.toLowerCase() === (type as string).toLowerCase());
+    }
+    if (search) {
+      const q = (search as string).toLowerCase();
+      results = results.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.description.toLowerCase().includes(q) ||
+          r.category.toLowerCase().includes(q) ||
+          (r.tags && r.tags.some((t: string) => t.toLowerCase().includes(q)))
+      );
+    }
+    res.json({ success: true, count: results.length, data: results });
+  });
+
+  app.get('/api/resources/:id', (req, res) => {
+    const item = resourcesDb.find((r) => r.id === req.params.id);
+    if (!item) return res.status(404).json({ success: false, message: 'Resource not found' });
+    res.json({ success: true, data: item });
+  });
+
+  app.post('/api/resources', (req, res) => {
+    const { title, description, category, type, author, authorRole, authorId, url, downloadUrl, tags } = req.body;
+    if (!title || !category || !type) {
+      return res.status(400).json({ success: false, message: 'Title, category, and type are required' });
+    }
+    const newResource = {
+      id: `res-${Date.now()}`,
+      title,
+      description: description || '',
+      category,
+      type,
+      author: author || 'EduHub Member',
+      authorRole: authorRole || 'student',
+      authorId: authorId || 'user-101',
+      url: url || '',
+      downloadUrl: downloadUrl || url || '',
+      rating: 5.0,
+      likesCount: 1,
+      viewCount: 1,
+      reviewsCount: 0,
+      createdAt: new Date().toISOString().split('T')[0],
+      tags: tags || [category],
+    };
+    resourcesDb.unshift(newResource);
+    res.status(201).json({ success: true, message: 'Resource published successfully', data: newResource });
+  });
+
+  app.put('/api/resources/:id', (req, res) => {
+    const index = resourcesDb.findIndex((r) => r.id === req.params.id);
+    if (index === -1) return res.status(404).json({ success: false, message: 'Resource not found' });
+    resourcesDb[index] = { ...resourcesDb[index], ...req.body };
+    res.json({ success: true, message: 'Resource updated', data: resourcesDb[index] });
+  });
+
+  app.post('/api/resources/:id/like', (req, res) => {
+    const item = resourcesDb.find((r) => r.id === req.params.id);
+    if (!item) return res.status(404).json({ success: false, message: 'Resource not found' });
+    item.likesCount = (item.likesCount || 0) + 1;
+    res.json({ success: true, likesCount: item.likesCount });
+  });
+
+  app.post('/api/resources/:id/view', (req, res) => {
+    const item = resourcesDb.find((r) => r.id === req.params.id);
+    if (!item) return res.status(404).json({ success: false, message: 'Resource not found' });
+    item.viewCount = (item.viewCount || 0) + 1;
+    res.json({ success: true, viewCount: item.viewCount });
+  });
+
+  app.delete('/api/resources/:id', (req, res) => {
+    const initialLen = resourcesDb.length;
+    resourcesDb = resourcesDb.filter((r) => r.id !== req.params.id);
+    if (resourcesDb.length === initialLen) return res.status(404).json({ success: false, message: 'Resource not found' });
+    res.json({ success: true, message: 'Resource deleted successfully' });
+  });
+
+  // Chat Groups & Messages Endpoints
+  let chatGroupsDb: any[] = [
+    {
+      id: 'grp-major-project-2026',
+      name: 'Major Project Team 2026',
+      description: 'WhatsApp-style group for team coordination, code reviews, and project milestones',
+      category: 'Project Collaboration',
+      avatarColor: 'from-emerald-500 to-teal-700',
+      creatorId: 'user-101',
+      creatorName: 'Aarav Sharma',
+      isPrivate: false,
+      createdAt: '2026-08-10',
+      adminIds: ['user-101'],
+      members: [
+        {
+          userId: 'user-101',
+          name: 'Aarav Sharma',
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+          role: 'admin',
+          joinedAt: '2026-08-10',
+        },
+      ],
+    },
+  ];
+
+  let groupMessagesDb: Record<string, any[]> = {
+    'grp-major-project-2026': [],
+  };
+
+  app.get('/api/chat/groups', (req, res) => {
+    res.json({ success: true, data: chatGroupsDb });
+  });
+
+  app.post('/api/chat/groups', (req, res) => {
+    const { name, description, category, avatarColor, isPrivate, creatorId, creatorName } = req.body;
+    if (!name) return res.status(400).json({ success: false, message: 'Group name is required' });
+    const newGroup = {
+      id: `grp-${Date.now()}`,
+      name,
+      description: description || '',
+      category: category || 'Project Collaboration',
+      avatarColor: avatarColor || 'from-emerald-500 to-teal-700',
+      creatorId: creatorId || 'user-101',
+      creatorName: creatorName || 'Aarav Sharma',
+      isPrivate: Boolean(isPrivate),
+      createdAt: new Date().toISOString().split('T')[0],
+      adminIds: [creatorId || 'user-101'],
+      members: [
+        {
+          userId: creatorId || 'user-101',
+          name: creatorName || 'Aarav Sharma',
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+          role: 'admin',
+          joinedAt: new Date().toISOString().split('T')[0],
+        },
+      ],
+    };
+    chatGroupsDb.unshift(newGroup);
+    groupMessagesDb[newGroup.id] = [];
+    res.status(201).json({ success: true, data: newGroup });
+  });
+
+  app.get('/api/chat/groups/:groupId/messages', (req, res) => {
+    const messages = groupMessagesDb[req.params.groupId] || [];
+    res.json({ success: true, count: messages.length, data: messages });
+  });
+
+  app.post('/api/chat/groups/:groupId/messages', (req, res) => {
+    const { groupId } = req.params;
+    const { senderId, senderName, senderAvatar, senderRole, text, codeSnippet, replyTo } = req.body;
+    if (!text && !codeSnippet) {
+      return res.status(400).json({ success: false, message: 'Message text or code snippet is required' });
+    }
+    const newMessage = {
+      id: `gmsg-${Date.now()}`,
+      groupId,
+      senderId: senderId || 'user-101',
+      senderName: senderName || 'Aarav Sharma',
+      senderAvatar: senderAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+      senderRole: senderRole || 'member',
+      text: text || '',
+      codeSnippet: codeSnippet || undefined,
+      replyTo: replyTo || undefined,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now(),
+      reactions: {},
+    };
+    if (!groupMessagesDb[groupId]) groupMessagesDb[groupId] = [];
+    groupMessagesDb[groupId].push(newMessage);
+    res.status(201).json({ success: true, data: newMessage });
+  });
+
   // HTTP Server & Socket.IO
   const server = http.createServer(app);
   const io = new SocketIOServer(server, {
     cors: { origin: '*', methods: ['GET', 'POST'] },
   });
 
+  const onlineUsers = new Map<string, { userId: string; name?: string; role?: string }>();
+
   io.on('connection', (socket) => {
+    socket.on('user_connected', (userData) => {
+      if (userData && userData.userId) {
+        onlineUsers.set(socket.id, {
+          userId: userData.userId,
+          name: userData.name,
+          role: userData.role,
+        });
+        io.emit('online_users_count', onlineUsers.size);
+      }
+    });
+
     socket.on('join_group', ({ groupId, userName }) => {
       socket.join(groupId);
-      socket.to(groupId).emit('user_joined_group', { groupId, userName });
+      socket.to(groupId).emit('user_joined_group', {
+        groupId,
+        userName,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      });
+    });
+
+    socket.on('leave_group', ({ groupId, userName }) => {
+      socket.leave(groupId);
+      socket.to(groupId).emit('user_left_group', { groupId, userName });
     });
 
     socket.on('send_group_message', (msg) => {
@@ -471,6 +849,17 @@ Please provide:
 
     socket.on('typing_stop', (payload) => {
       socket.to(payload.groupId).emit('user_typing', { ...payload, isTyping: false });
+    });
+
+    socket.on('delete_message', ({ groupId, messageId }) => {
+      io.to(groupId).emit('message_deleted', { groupId, messageId });
+    });
+
+    socket.on('disconnect', () => {
+      if (onlineUsers.has(socket.id)) {
+        onlineUsers.delete(socket.id);
+        io.emit('online_users_count', onlineUsers.size);
+      }
     });
   });
 

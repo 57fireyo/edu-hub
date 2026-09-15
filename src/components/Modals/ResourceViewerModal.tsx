@@ -272,12 +272,13 @@ export const ResourceViewerModal: React.FC = () => {
                         {currentResource.fileName || `${currentResource.title}.pdf`}
                       </span>
                       <a
-                        href={currentResource.fileUrl || currentResource.url}
+                        href={currentResource.fileUrl || currentResource.url || "https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf"}
+                        download="academic-compendium.pdf"
                         target="_blank"
                         rel="noreferrer"
                         className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                       >
-                        <span>Open Document Source</span>
+                        <span>Download PDF</span>
                         <Download className="w-3.5 h-3.5" />
                       </a>
                     </div>
@@ -462,13 +463,20 @@ export const ResourceViewerModal: React.FC = () => {
             </span>
           </div>
 
-          <button
-            onClick={() => showToast('Compendium downloaded to local storage (.pdf)')}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-98"
+          <a
+            href={currentResource?.downloadUrl || currentResource?.fileUrl || "https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf"}
+            download="academic-compendium.pdf"
+            target="_blank"
+            rel="noreferrer"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download Material</span>
-          </button>
+            <button
+              type="button"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-98 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download PDF</span>
+            </button>
+          </a>
         </div>
       </div>
     </div>

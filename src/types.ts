@@ -99,6 +99,23 @@ export interface ContentReport {
 
 export type ConnectionStatus = 'friend' | 'pending_incoming' | 'pending_outgoing' | 'blocked' | 'none';
 
+export interface CampusDirectoryUser {
+  id: string;
+  name: string;
+  role: UserRole;
+  branch: string;
+  academicTrack: string;
+  year?: string;
+  btId?: string;
+  avatar: string;
+  bio: string;
+  skills: string[];
+  isOnline: boolean;
+  lastSeen?: string;
+  email?: string;
+  mutualFriendsCount?: number;
+}
+
 export interface FriendConnection {
   id: string;
   userId: string;
