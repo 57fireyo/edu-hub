@@ -18,7 +18,9 @@ import {
   KeyRound,
   Crown,
   Camera,
+  History,
 } from 'lucide-react';
+import { ActivityHistoryModal } from './ActivityHistoryModal';
 
 export const TopNavbar: React.FC = () => {
   const {
@@ -31,6 +33,9 @@ export const TopNavbar: React.FC = () => {
     setIsAvatarModalOpen,
     isOwner,
     setIsSecretOwnerModalOpen,
+    activityHistory,
+    isHistoryModalOpen,
+    setIsHistoryModalOpen,
     showToast,
   } = useApp();
   const { user, logout, toggleRole } = useAuth();
@@ -146,6 +151,21 @@ export const TopNavbar: React.FC = () => {
 
         {/* Right Actions: Notifications, Messages, Secret Owner Gateway, Go Pro, Profile */}
         <div className="flex items-center gap-2">
+          {/* Learning & Activity History Button (Header feature) */}
+          <button
+            id="history-header-btn"
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors relative cursor-pointer group"
+            title="Activity History (Track Downloads, Code Changes & Classes)"
+          >
+            <History className="w-4.5 h-4.5 group-hover:rotate-[-20deg] transition-transform duration-200" />
+            {activityHistory.length > 0 && (
+              <span className="absolute top-1 right-1 px-1.5 py-0.2 text-[9px] font-bold bg-indigo-600 text-white rounded-full">
+                {activityHistory.length > 99 ? '99+' : activityHistory.length}
+              </span>
+            )}
+          </button>
+
           {/* Secret Owner Gateway Trigger Button */}
           <button
             id="secret-owner-trigger-btn"
@@ -377,6 +397,7 @@ export const TopNavbar: React.FC = () => {
           </div>
         </div>
       </div>
+      <ActivityHistoryModal />
     </nav>
   );
 };

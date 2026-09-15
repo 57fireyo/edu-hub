@@ -466,3 +466,23 @@ export interface GroupMessage {
   };
   isSystem?: boolean;
 }
+
+export type ActivityHistoryType = 'download' | 'code_execution' | 'live_class' | 'submission';
+
+export interface ActivityHistoryItem {
+  id: string;
+  type: ActivityHistoryType;
+  title: string;
+  subtitle?: string;
+  timestamp: string;
+  createdAt: number;
+  metadata?: {
+    fileUrl?: string;
+    language?: string;
+    codeSnippet?: string;
+    executionTimeMs?: number;
+    hasError?: boolean;
+    classId?: string;
+    instructor?: string;
+  };
+}

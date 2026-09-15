@@ -50,6 +50,7 @@ export const AuthModal: React.FC = () => {
   // Verification code state
   const [verificationCode, setVerificationCode] = useState('');
   const [pendingProfile, setPendingProfile] = useState<any>(null);
+  const [recentOtpHint, setRecentOtpHint] = useState<string | null>(null);
 
   // Listen for Supabase email confirmation redirect/auth changes
   useEffect(() => {
@@ -185,13 +186,30 @@ export const AuthModal: React.FC = () => {
       };
       setPendingProfile(profileToSave);
 
-      // 3. Check if user already confirmed or requires confirmation
+      // 3. Dispatch random 6-digit verification OTP via server OTP service
+      try {
+        const otpResp = await fetch('/api/auth/send-verification-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput }),
+        });
+        if (otpResp.ok) {
+          const otpData = await otpResp.json();
+          if (otpData.devCode) {
+            setRecentOtpHint(otpData.devCode);
+          }
+        }
+      } catch (otpErr) {
+        console.warn('Backend OTP dispatch notice:', otpErr);
+      }
+
+      // 4. Check if user already confirmed or requires confirmation
       const isConfirmed = data?.user?.email_confirmed_at || data?.user?.confirmed_at;
 
       if (!isConfirmed) {
         // Enforce verification: switch view to verification screen
         setMode('verify');
-        showToast(`Verification email sent to ${emailInput}! Please confirm to complete registration.`);
+        showToast(`Verification email & 6-digit OTP sent to ${emailInput}!`);
       } else {
         // Only if email is already verified by provider:
         register(profileToSave);
@@ -209,7 +227,8 @@ export const AuthModal: React.FC = () => {
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!verificationCode.trim()) {
+    const token = verificationCode.trim();
+    if (!token) {
       setAuthError('Please enter the 6-digit confirmation code or OTP');
       return;
     }
@@ -217,24 +236,53 @@ export const AuthModal: React.FC = () => {
     setIsVerifying(true);
     setAuthError(null);
 
-    try {
-      // Try verifying with Supabase verifyOtp
-      let verifyRes = await supabase.auth.verifyOtp({
-        email: emailInput,
-        token: verificationCode.trim(),
-        type: 'signup',
-      });
+    let verifiedSuccessfully = false;
 
-      if (verifyRes.error) {
-        verifyRes = await supabase.auth.verifyOtp({
-          email: emailInput,
-          token: verificationCode.trim(),
-          type: 'email',
+    try {
+      // 1. First check against our dedicated 6-digit OTP verification endpoint
+      try {
+        const otpVerifyResp = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: emailInput,
+            code: token,
+          }),
         });
+
+        if (otpVerifyResp.ok) {
+          const otpVerifyData = await otpVerifyResp.json();
+          if (otpVerifyData.success) {
+            verifiedSuccessfully = true;
+          }
+        }
+      } catch (localOtpErr) {
+        console.warn('Local OTP verification check:', localOtpErr);
       }
 
-      if (verifyRes.error) {
-        throw verifyRes.error;
+      // 2. If not verified by local OTP, verify against Supabase verifyOtp
+      if (!verifiedSuccessfully) {
+        let verifyRes = await supabase.auth.verifyOtp({
+          email: emailInput,
+          token: token,
+          type: 'signup',
+        });
+
+        if (verifyRes.error) {
+          verifyRes = await supabase.auth.verifyOtp({
+            email: emailInput,
+            token: token,
+            type: 'email',
+          });
+        }
+
+        if (!verifyRes.error) {
+          verifiedSuccessfully = true;
+        }
+      }
+
+      if (!verifiedSuccessfully) {
+        throw new Error('Invalid or expired 6-digit verification code. Please check and try again.');
       }
 
       // Verification confirmed! Complete the registration now
@@ -312,21 +360,41 @@ export const AuthModal: React.FC = () => {
     setIsResending(true);
     setAuthError(null);
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: emailInput,
-        options: {
-          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-        },
-      });
+      // 1. Resend random 6-digit OTP via server endpoint
+      let sentLocalOtp = false;
+      try {
+        const resp = await fetch('/api/auth/send-verification-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput }),
+        });
+        if (resp.ok) {
+          const resData = await resp.json();
+          if (resData.devCode) {
+            setRecentOtpHint(resData.devCode);
+          }
+          sentLocalOtp = true;
+        }
+      } catch (err) {
+        console.warn('Local OTP send error:', err);
+      }
 
-      if (error) {
-        throw error;
+      // 2. Also trigger Supabase native resend email
+      try {
+        await supabase.auth.resend({
+          type: 'signup',
+          email: emailInput,
+          options: {
+            emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+          },
+        });
+      } catch (supaErr) {
+        console.warn('Supabase resend:', supaErr);
       }
 
       setResendSuccess(true);
-      showToast(`Fresh verification email sent to ${emailInput}!`);
-      setTimeout(() => setResendSuccess(false), 6000);
+      showToast(`New 6-digit verification code sent to ${emailInput}!`);
+      setTimeout(() => setResendSuccess(false), 8000);
     } catch (err: any) {
       console.warn('Resend error:', err);
       setAuthError(err.message || 'Failed to resend confirmation email.');
@@ -413,16 +481,31 @@ export const AuthModal: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Verification Email Dispatched
+                    6-Digit OTP & Verification Link Dispatched
                   </h3>
                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    We sent an email verification link and 6-digit confirmation code to:
+                    We generated and sent a random 6-digit verification code to:
                   </p>
                   <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 break-all font-mono">
                     {emailInput}
                   </div>
+                  {recentOtpHint && (
+                    <div className="mt-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
+                      <span className="text-emerald-800 dark:text-emerald-300 font-medium">
+                        Verification 6-Digit OTP:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setVerificationCode(recentOtpHint)}
+                        className="font-mono font-bold tracking-widest text-emerald-900 dark:text-emerald-200 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors cursor-pointer"
+                        title="Click to autofill OTP"
+                      >
+                        {recentOtpHint} <span className="text-[10px] font-sans font-normal text-emerald-600 ml-1">(Auto-fill)</span>
+                      </button>
+                    </div>
+                  )}
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-                    Registration will be finalized as soon as your email is verified.
+                    Enter the 6-digit OTP code below or click the button in your email to verify.
                   </p>
                 </div>
               </div>

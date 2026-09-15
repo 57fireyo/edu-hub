@@ -25,6 +25,8 @@ import {
   CollegeStats,
   SupportedCodeLanguage,
   CampusDirectoryUser,
+  ActivityHistoryItem,
+  ActivityHistoryType,
 } from '../types';
 import {
   sampleResources,
@@ -299,6 +301,13 @@ interface AppContextType {
   logoutOwner: () => void;
   notificationToast: string | null;
   showToast: (msg: string) => void;
+
+  // Activity History Tracker (Header feature)
+  activityHistory: ActivityHistoryItem[];
+  addActivityHistory: (item: Omit<ActivityHistoryItem, 'id' | 'createdAt' | 'timestamp'>) => void;
+  clearActivityHistory: () => void;
+  isHistoryModalOpen: boolean;
+  setIsHistoryModalOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -324,6 +333,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('eduhub_announcements');
     return saved ? JSON.parse(saved) : sampleAnnouncements;
   });
+
+  // Activity History Tracker State (Header section)
+  const [activityHistory, setActivityHistory] = useState<ActivityHistoryItem[]>(() => {
+    const saved = localStorage.getItem('eduhub_activity_history');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // fallback
+      }
+    }
+    return [
+      {
+        id: 'hist-init-1',
+        type: 'download',
+        title: 'Advanced Data Structures & Trees Compendium',
+        subtitle: 'DSA Practical Guide (PDF) via Supabase Storage',
+        timestamp: 'Today at 09:30 AM',
+        createdAt: Date.now() - 3600000,
+        metadata: {
+          fileUrl: 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf',
+        },
+      },
+      {
+        id: 'hist-init-2',
+        type: 'live_class',
+        title: 'Building Production Microservices with gRPC & Go',
+        subtitle: 'Attended live masterclass by David Chen',
+        timestamp: 'Yesterday at 04:15 PM',
+        createdAt: Date.now() - 86400000,
+        metadata: {
+          classId: 'class-1',
+          instructor: 'David Chen',
+        },
+      },
+      {
+        id: 'hist-init-3',
+        type: 'code_execution',
+        title: 'Executed Python 3 Algorithm',
+        subtitle: 'Segment Tree & Range Sum Queries • 0 errors',
+        timestamp: '2 days ago',
+        createdAt: Date.now() - 172800000,
+        metadata: {
+          language: 'python',
+          hasError: false,
+          executionTimeMs: 142,
+        },
+      },
+    ];
+  });
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    localStorage.setItem('eduhub_activity_history', JSON.stringify(activityHistory));
+  }, [activityHistory]);
+
+  const addActivityHistory = (item: Omit<ActivityHistoryItem, 'id' | 'createdAt' | 'timestamp'>) => {
+    const newItem: ActivityHistoryItem = {
+      ...item,
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      createdAt: Date.now(),
+      timestamp: 'Just now',
+    };
+    setActivityHistory((prev) => [newItem, ...prev.slice(0, 49)]); // keep latest 50
+  };
+
+  const clearActivityHistory = () => {
+    setActivityHistory([]);
+    localStorage.removeItem('eduhub_activity_history');
+    showToast('Activity history cleared');
+  };
 
   // Resources
   const [resources, setResources] = useState<ResourceItem[]>(() => {
@@ -1971,6 +2051,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...lines.map((l) => ({ type: 'output' as const, text: l })),
           ]);
         }
+
+        // Track in Activity History
+        addActivityHistory({
+          type: 'code_execution',
+          title: `Executed ${codeLanguage.toUpperCase()} Code`,
+          subtitle: `${data.hasError ? 'Failed with errors' : 'Finished exit code 0'} (${data.executionTimeMs}ms)`,
+          metadata: {
+            language: codeLanguage,
+            codeSnippet: (code || '').slice(0, 120),
+            executionTimeMs: data.executionTimeMs,
+            hasError: Boolean(data.hasError),
+          },
+        });
       } else {
         throw new Error(`Server returned status ${response.status}`);
       }
@@ -2313,6 +2406,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logoutOwner,
         notificationToast,
         showToast,
+        activityHistory,
+        addActivityHistory,
+        clearActivityHistory,
+        isHistoryModalOpen,
+        setIsHistoryModalOpen,
       }}
     >
       {children}

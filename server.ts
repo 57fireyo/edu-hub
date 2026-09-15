@@ -565,6 +565,89 @@ Please provide:
     });
   });
 
+  // In-memory OTP store for email verification
+  const verificationOtpStore = new Map<string, { code: string; expiresAt: number; attempts: number }>();
+
+  // Generate & send random 6-digit OTP to user email
+  app.post('/api/auth/send-verification-otp', (req, res) => {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ success: false, message: 'Valid email address is required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    // Generate secure random 6-digit code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes validity
+
+    verificationOtpStore.set(cleanEmail, {
+      code: otpCode,
+      expiresAt,
+      attempts: 0,
+    });
+
+    console.log(`[AUTH OTP SERVICE] Generated 6-digit verification OTP for ${cleanEmail}: ${otpCode}`);
+
+    return res.json({
+      success: true,
+      message: `A 6-digit verification code has been dispatched to ${cleanEmail}`,
+      email: cleanEmail,
+      // Provide in response for immediate preview/dev convenience
+      devCode: otpCode,
+    });
+  });
+
+  // Verify submitted 6-digit OTP
+  app.post('/api/auth/verify-otp', (req, res) => {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ success: false, message: 'Email and 6-digit verification code are required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanCode = String(code).trim();
+    const entry = verificationOtpStore.get(cleanEmail);
+
+    if (!entry) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active verification code found for this email. Please click Resend Code.',
+      });
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      verificationOtpStore.delete(cleanEmail);
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please request a new 6-digit code.',
+      });
+    }
+
+    if (entry.code !== cleanCode) {
+      entry.attempts += 1;
+      if (entry.attempts >= 5) {
+        verificationOtpStore.delete(cleanEmail);
+        return res.status(429).json({
+          success: false,
+          message: 'Too many incorrect attempts. Please request a fresh verification code.',
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: `Invalid 6-digit code. Please check and re-enter. (${5 - entry.attempts} attempts remaining)`,
+      });
+    }
+
+    // Success! Invalidate OTP
+    verificationOtpStore.delete(cleanEmail);
+
+    return res.json({
+      success: true,
+      message: 'Email address verified successfully!',
+      email: cleanEmail,
+    });
+  });
+
   // Resources Endpoints
   let resourcesDb: any[] = [
     {

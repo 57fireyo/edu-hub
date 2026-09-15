@@ -31,6 +31,7 @@ export const LiveClassesView: React.FC = () => {
     addReview,
     openReportModal,
     showToast,
+    addActivityHistory,
   } = useApp();
 
   const [activeStreamId, setActiveStreamId] = useState<string>(liveClasses[0]?.id || 'class-1');
@@ -498,6 +499,15 @@ export const LiveClassesView: React.FC = () => {
                 onClick={() => {
                   setActiveStreamId(cls.id);
                   incrementLiveClassViews(cls.id);
+                  addActivityHistory({
+                    type: 'live_class',
+                    title: cls.title,
+                    subtitle: `${cls.isLiveNow ? 'Live Stream' : 'Masterclass'} • Instructor: ${cls.instructor}`,
+                    metadata: {
+                      classId: cls.id,
+                      instructor: cls.instructor,
+                    },
+                  });
                   showToast(`Switched stream to: ${cls.title}`);
                 }}
                 className={`bg-white dark:bg-slate-900 border rounded-2xl overflow-hidden hover:shadow-md transition-all cursor-pointer flex flex-col group shadow-xs relative ${

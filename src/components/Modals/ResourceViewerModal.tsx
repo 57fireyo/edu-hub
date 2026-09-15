@@ -30,6 +30,7 @@ export const ResourceViewerModal: React.FC = () => {
     addReview,
     showToast,
     resources,
+    addActivityHistory,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'content' | 'reviews'>('content');
@@ -472,6 +473,21 @@ export const ResourceViewerModal: React.FC = () => {
             download="dsa all practicals.pdf"
             target="_blank"
             rel="noreferrer"
+            onClick={() => {
+              if (currentResource) {
+                addActivityHistory({
+                  type: 'download',
+                  title: currentResource.title,
+                  subtitle: `Downloaded ${currentResource.type.toUpperCase()} • ${currentResource.subjectCode || 'Academic'}`,
+                  metadata: {
+                    fileUrl:
+                      currentResource.id === 'res-dsa-pdf-1' || currentResource.subjectCode === 'DSA'
+                        ? 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf'
+                        : currentResource.fileUrl || currentResource.downloadUrl || currentResource.url,
+                  },
+                });
+              }
+            }}
           >
             <button
               type="button"
