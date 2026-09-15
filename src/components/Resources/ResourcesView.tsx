@@ -4,6 +4,7 @@ import { ResourceItem, ResourceType } from '../../types';
 import { Breadcrumb } from '../Navigation/Breadcrumb';
 import { ManageAcademicStructureModal } from './ManageAcademicStructureModal';
 import { AddAcademicResourceModal } from './AddAcademicResourceModal';
+import { getYouTubeVideoId } from '../../lib/youtube';
 import {
   BookOpen,
   FileText,
@@ -80,7 +81,12 @@ export const ResourcesView: React.FC = () => {
     const matchesYear = selectedYear === 'All' || item.academicYear === selectedYear;
     const matchesBranch = selectedBranch === 'All' || item.branch === selectedBranch;
     const matchesSubject = selectedSubject === 'All' || item.subjectCode === selectedSubject;
-    const matchesType = typeFilter === 'all' || item.type === typeFilter;
+    const isItemVideo = item.type === 'Video Lectures' || item.type === 'video' || !!item.videoUrl;
+    const matchesType =
+      typeFilter === 'all' ||
+      item.type === typeFilter ||
+      (typeFilter === 'Video Lectures' && isItemVideo) ||
+      (typeFilter === 'Notes' && (item.type === 'pdf' || item.type === 'Notes'));
     const matchesSaved = !onlySaved || item.saved;
 
     // Search text query
@@ -488,6 +494,42 @@ export const ResourcesView: React.FC = () => {
                     </p>
                   </div>
 
+                  {/* YouTube Video Lecture Player & Direct Watch Link */}
+                  {(item.type === 'Video Lectures' || item.type === 'video' || !!item.videoUrl) && (() => {
+                    const videoId = getYouTubeVideoId(item.videoUrl || item.url);
+                    return (
+                      <div className="space-y-2 pt-1">
+                        <a
+                          href={`https://www.youtube.com/watch?v=${videoId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline text-xs font-semibold inline-flex items-center gap-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addActivityHistory({
+                              type: 'class',
+                              title: item.title,
+                              subtitle: `Watched Video Lecture on YouTube • ${item.subjectCode || 'Academic'}`,
+                              metadata: { url: `https://www.youtube.com/watch?v=${videoId}` }
+                            });
+                          }}
+                        >
+                          Watch Video on YouTube
+                        </a>
+
+                        <div className="aspect-video w-full max-w-2xl overflow-hidden rounded-lg bg-black border border-slate-200 dark:border-slate-800 shadow-sm">
+                          <iframe
+                            className="w-full h-full"
+                            src={`https://www.youtube.com/embed/${videoId}`}
+                            title={item.title || 'YouTube video player'}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          ></iframe>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Format details pill */}
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
                     <div className="flex items-center gap-1.5">
@@ -528,7 +570,27 @@ export const ResourcesView: React.FC = () => {
                     </button>
 
                     <div className="flex items-center gap-1.5">
-                      {item.type !== 'Video Lectures' && (
+                      {item.type === 'Video Lectures' || item.type === 'video' || !!item.videoUrl ? (
+                        <a
+                          href={`https://www.youtube.com/watch?v=${getYouTubeVideoId(item.videoUrl || item.url)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
+                          title="Open directly on YouTube"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addActivityHistory({
+                              type: 'class',
+                              title: item.title,
+                              subtitle: `Watched Video Lecture on YouTube • ${item.subjectCode || 'Academic'}`,
+                              metadata: { url: `https://www.youtube.com/watch?v=${getYouTubeVideoId(item.videoUrl || item.url)}` },
+                            });
+                          }}
+                        >
+                          <PlayCircle className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">YouTube</span>
+                        </a>
+                      ) : (
                         <a
                           href={
                             item.id === 'res-dsa-pdf-1' || item.subjectCode === 'DSA'

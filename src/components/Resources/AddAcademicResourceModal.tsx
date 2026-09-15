@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ResourceType, ResourceItem } from '../../types';
+import { getYouTubeVideoId } from '../../lib/youtube';
 
 interface AddAcademicResourceModalProps {
   isOpen: boolean;
@@ -414,6 +415,35 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
                   </div>
                 )}
               </div>
+
+              {/* YouTube Video Lecture Embed & Link Preview */}
+              {videoUrl.trim() && (
+                <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      Live Video Lecture Preview
+                    </span>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${getYouTubeVideoId(videoUrl)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline text-xs font-semibold"
+                    >
+                      Watch Video on YouTube
+                    </a>
+                  </div>
+
+                  <div className="aspect-video w-full max-w-2xl overflow-hidden rounded-lg bg-black border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <iframe
+                      className="w-full h-full"
+                      src={`https://www.youtube.com/embed/${getYouTubeVideoId(videoUrl)}`}
+                      title="YouTube video player"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

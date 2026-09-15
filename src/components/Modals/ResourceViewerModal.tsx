@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { getYouTubeVideoId } from '../../lib/youtube';
 import {
   X,
   BookOpen,
@@ -192,66 +193,70 @@ export const ResourceViewerModal: React.FC = () => {
               </div>
 
               {/* Video Preview or Document Banner */}
-              {currentResource.type === 'Video Lectures' || currentResource.videoUrl ? (
-                <div className="space-y-3">
-                  <div className="relative rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center border border-slate-800 shadow-md">
-                    {currentResource.videoUrl?.includes('youtube.com') || currentResource.videoUrl?.includes('youtu.be') ? (
+              {currentResource.type === 'Video Lectures' || currentResource.type === 'video' || currentResource.videoUrl ? (() => {
+                const videoId = getYouTubeVideoId(currentResource.videoUrl || currentResource.url);
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <a 
+                        href={`https://www.youtube.com/watch?v=${videoId}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline inline-flex items-center gap-1.5 font-medium text-xs sm:text-sm"
+                        onClick={() => {
+                          addActivityHistory({
+                            type: 'class',
+                            title: currentResource.title,
+                            subtitle: `Watched Video Lecture on YouTube • ${currentResource.subjectCode || 'Academic'}`,
+                            metadata: { url: `https://www.youtube.com/watch?v=${videoId}` }
+                          });
+                        }}
+                      >
+                        Watch Video on YouTube
+                      </a>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                        YouTube ID: {videoId}
+                      </span>
+                    </div>
+
+                    <div className="aspect-video w-full max-w-2xl overflow-hidden rounded-lg bg-black border border-slate-800 shadow-md">
                       <iframe
-                        src={currentResource.videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
-                        title={currentResource.title}
-                        className="w-full h-full border-0"
+                        className="w-full h-full"
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        title="YouTube video player"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
-                        <PlayCircle className="w-16 h-16 text-indigo-500 mb-2" />
-                        <h4 className="text-sm font-bold text-white mb-1">
-                          Lecture Video Stream Ready
-                        </h4>
-                        <p className="text-xs text-slate-400 max-w-sm mb-4">
-                          Instructed by {currentResource.uploaderName || currentResource.author}. Duration: {currentResource.videoDuration || '45m'}
-                        </p>
-                        <a
-                          href={currentResource.videoUrl || currentResource.url || '#'}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-2"
-                        >
-                          <PlayCircle className="w-4 h-4" />
-                          <span>Launch Fullscreen Player</span>
-                        </a>
+                      ></iframe>
+                    </div>
+
+                    {/* Video Timestamps & Chapter Markers */}
+                    {currentResource.videoTimestamps && currentResource.videoTimestamps.length > 0 && (
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Interactive Lecture Chapters & Timestamp Markers</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {currentResource.videoTimestamps.map((ts, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => showToast(`Skipping video playback to ${ts.time} (${ts.label})`)}
+                              className="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 cursor-pointer transition-colors text-xs"
+                            >
+                              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950">
+                                {ts.time}
+                              </span>
+                              <span className="text-slate-800 dark:text-slate-200 truncate">
+                                {ts.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Video Timestamps & Chapter Markers */}
-                  {currentResource.videoTimestamps && currentResource.videoTimestamps.length > 0 && (
-                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                      <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Interactive Lecture Chapters & Timestamp Markers</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {currentResource.videoTimestamps.map((ts, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => showToast(`Skipping video playback to ${ts.time} (${ts.label})`)}
-                            className="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 cursor-pointer transition-colors text-xs"
-                          >
-                            <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950">
-                              {ts.time}
-                            </span>
-                            <span className="text-slate-800 dark:text-slate-200 truncate">
-                              {ts.label}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
+                );
+              })() : (
                 <div className="p-4 bg-indigo-50/50 dark:bg-slate-800/60 rounded-xl border border-indigo-100 dark:border-slate-700">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-semibold text-xs">
