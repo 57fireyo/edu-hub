@@ -45,60 +45,60 @@ export const DashboardView: React.FC = () => {
       {/* Explicit Breadcrumb */}
       <Breadcrumb category="Academic Portal" items={[{ label: 'Executive Dashboard' }]} />
 
-      {/* College Live Academic Stats Strip */}
+      {/* College Academic Portal Live Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-            <GraduationCap className="w-5 h-5" />
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#1B1B22] border border-slate-200 dark:border-[#30303A] shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold">
+            <BookOpen className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Enrolled Engineers
+              Course Compendiums
             </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white">
-              {Number(collegeStats?.totalStudents ?? 3200).toLocaleString()}
+            <span className="text-lg font-black text-slate-900 dark:text-[#F5F5F7]">
+              {resources.length}
             </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#1B1B22] border border-slate-200 dark:border-[#30303A] shadow-xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-            <Award className="w-5 h-5" />
+            <Briefcase className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Placement Record
+              Active Freelance Gigs
             </span>
             <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-              {collegeStats?.placementRate ? (String(collegeStats.placementRate).includes('%') ? collegeStats.placementRate : `${collegeStats.placementRate}%`) : '~77%'}
+              {gigs.length}
             </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#1B1B22] border border-slate-200 dark:border-[#30303A] shadow-xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-            <Layers className="w-5 h-5" />
+            <Users2 className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Active Projects
+              Active Mentors
             </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white">
-              {collegeStats?.activeProjects ?? 142}
+            <span className="text-lg font-black text-slate-900 dark:text-[#F5F5F7]">
+              {mentors.length}
             </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#1B1B22] border border-slate-200 dark:border-[#30303A] shadow-xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
             <Tv className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-              Live Faculty Streams
+              Live Classes
             </span>
             <span className="text-lg font-black text-amber-600 dark:text-amber-400">
-              {collegeStats?.liveStreams ?? 8}
+              {liveClasses.length}
             </span>
           </div>
         </div>

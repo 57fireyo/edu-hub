@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types';
 import { initialUser } from '../mockData';
-import { auth, db } from '../lib/firebase';
+import { auth, db, googleAuthProvider, signInWithPopup } from '../lib/firebase';
 import { signInAnonymously, onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -11,6 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isFirebaseConnected: boolean;
   login: (btId: string, role?: UserRole) => boolean;
+  signInWithGoogle: () => Promise<boolean>;
   register: (profileData: Partial<UserProfile>) => boolean;
   logout: () => void;
   updateUser: (updates: Partial<UserProfile>) => void;
@@ -98,6 +99,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const signInWithGoogle = async (): Promise<boolean> => {
+    try {
+      const result = await signInWithPopup(auth, googleAuthProvider);
+      const fbUser = result.user;
+      const userDocRef = doc(db, 'users', fbUser.uid);
+      const snap = await getDoc(userDocRef);
+
+      if (snap.exists()) {
+        const existing = snap.data() as UserProfile;
+        setUser((prev) => ({ ...prev, ...existing, id: fbUser.uid }));
+      } else {
+        const newGoogleProfile: UserProfile = {
+          ...initialUser,
+          id: fbUser.uid,
+          name: fbUser.displayName || 'JDCOEM Scholar',
+          email: fbUser.email || undefined,
+          avatar: fbUser.photoURL || initialUser.avatar,
+          btId: (fbUser.email && fbUser.email.includes('@')) ? fbUser.email.split('@')[0].toUpperCase() : 'BT24CS' + Math.floor(100 + Math.random() * 900),
+          role: 'student',
+          academicTrack: 'Computer Science (Verified Google Auth)',
+        };
+        await setDoc(userDocRef, {
+          ...newGoogleProfile,
+          createdAt: new Date().toISOString(),
+        }, { merge: true });
+        setUser(newGoogleProfile);
+      }
+      setIsAuthenticated(true);
+      return true;
+    } catch (err: any) {
+      console.warn('Google Sign-in status/fallback note:', err);
+      // If popup was closed or network interrupted, handle gracefully
+      return false;
+    }
+  };
+
   const register = (profileData: Partial<UserProfile>) => {
     const newUser: UserProfile = {
       ...initialUser,
@@ -181,6 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated,
         isFirebaseConnected,
         login,
+        signInWithGoogle,
         register,
         logout,
         updateUser,

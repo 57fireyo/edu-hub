@@ -1,4 +1,5 @@
 import React from 'react';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { TopNavbar } from './components/Navigation/TopNavbar';
@@ -10,6 +11,7 @@ import { CodeWorkspaceView } from './components/CodeWorkspace/CodeWorkspaceView'
 import { MentorshipView } from './components/Mentorship/MentorshipView';
 import { LiveClassesView } from './components/LiveClasses/LiveClassesView';
 import { MessagesView } from './components/Messages/MessagesView';
+import { MeetingsView } from './components/MeetingsView';
 import { SettingsView } from './components/Settings/SettingsView';
 import { HelpView } from './components/Help/HelpView';
 import { OwnerControlCenter } from './components/Owner/OwnerControlCenter';
@@ -31,6 +33,23 @@ import { Megaphone, X, Crown } from 'lucide-react';
 const AppContent: React.FC = () => {
   const { activeTab, setActiveTab, notificationToast, announcements, isOwner } = useApp();
   const [closedAnnouncementId, setClosedAnnouncementId] = React.useState<string | null>(null);
+  const [meetCodeFromUrl, setMeetCodeFromUrl] = React.useState<string | null>(null);
+
+  // Auto-route /meet/:code directly to the join screen
+  React.useEffect(() => {
+    const handleUrlRoute = () => {
+      const path = window.location.pathname;
+      const match = path.match(/^\/meet\/([a-zA-Z0-9-]+)/);
+      if (match && match[1]) {
+        setMeetCodeFromUrl(match[1]);
+        setActiveTab('meetings');
+      }
+    };
+
+    handleUrlRoute();
+    window.addEventListener('popstate', handleUrlRoute);
+    return () => window.removeEventListener('popstate', handleUrlRoute);
+  }, [setActiveTab]);
 
   const activeAnnouncement = announcements && announcements.length > 0
     ? announcements.find((a) => a.active && a.id !== closedAnnouncementId)
@@ -52,6 +71,8 @@ const AppContent: React.FC = () => {
         return <LiveClassesView />;
       case 'messages':
         return <MessagesView />;
+      case 'meetings':
+        return <MeetingsView initialCode={meetCodeFromUrl} />;
       case 'settings':
         return <SettingsView />;
       case 'help':
@@ -175,11 +196,13 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

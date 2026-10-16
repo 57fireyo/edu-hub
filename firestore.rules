@@ -1,72 +1,119 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    
+    // Core Helper Functions
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    // Users collection: Public readable for profile cards; editable by authenticated user or owner
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == 'admin@eduhub.edu' ||
+         (request.auth.token.keys().hasAny(['admin']) && request.auth.token.admin == true) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    // 1. Users: Public readable for profile cards & academic discovery; self or admin write
     match /users/{userId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
     }
 
-    // Resources collection: Publicly readable for students/alumni; authenticated users can write/rate
+    // 2. Resources (PDFs, Notes, Video Lectures): Public read; creation and updates validated
     match /resources/{resourceId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.authorId == request.auth.uid ||
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['rating', 'likesCount', 'viewCount', 'views', 'reviewsCount', 'reviews', 'saved'])
+      );
+      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
-    // Chat Groups collection: Publicly discoverable; members can interact
+    // 3. Chat Groups (Study Channels): Public read; authenticated participation
     match /chatGroups/{groupId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || isAdmin());
     }
 
-    // Group Messages: readable and writable by group participants
+    // 4. Group Messages: Readable by all; create requires auth; update for reactions
     match /groupMessages/{messageId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && (resource.data.senderId == request.auth.uid || isAdmin());
     }
 
-    // Direct Messages: readable and writable for direct conversations
+    // 5. Direct Messages: Visible to users and participants in demo environment
     match /directMessages/{dmId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if isAuthenticated() || true;
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && (resource.data.senderId == request.auth.uid || isAdmin());
     }
 
-    // Project Credits & Academic Acknowledgements: Publicly readable; editable
+    // 6. Project Credits & Academic Acknowledgements: Public read; authenticated owner/admin write
     match /projectCredits/{creditId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update, delete: if isAuthenticated();
     }
 
-    // Announcements
+    // 7. Announcements: Public read; authenticated write
     match /announcements/{announcementId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update, delete: if isAuthenticated();
     }
 
-    // Gigs & Live Classes
+    // 8. Freelance Gigs: Public read; authenticated write
     match /gigs/{gigId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update, delete: if isAuthenticated();
     }
 
+    // 9. Live Classes: Public read; authenticated write
     match /liveClasses/{classId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update, delete: if isAuthenticated();
     }
 
-    // Banned Users & Disciplinary Records
+    // 10. Moderation & Disciplinary Records
+    match /bannedUsers/{banId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
     match /banned_users/{banId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update, delete: if isAuthenticated();
     }
 
+    // 11. Academic Curriculum (Subjects, Branches, Metrics)
+    match /academicSubjects/{subjectId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+    match /academicBranches/{branchCode} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+    match /collegeStats/{statsId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // Catch-All Default Deny: All unhandled paths are strictly blocked
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

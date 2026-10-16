@@ -1,100 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
-let chatGroupsDb = [
-  {
-    id: 'grp-major-project-2026',
-    name: 'Major Project Team 2026',
-    description: 'WhatsApp-style group for team coordination, code reviews, and project milestones',
-    category: 'Project Collaboration',
-    avatarColor: 'from-emerald-500 to-teal-700',
-    creatorId: 'user-101',
-    creatorName: 'Aarav Sharma',
-    isPrivate: false,
-    createdAt: '2026-08-10',
-    adminIds: ['user-101'],
-    members: [
-      {
-        userId: 'user-101',
-        name: 'Aarav Sharma',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-        role: 'admin',
-        joinedAt: '2026-08-10',
-      },
-      {
-        userId: 'user-102',
-        name: 'Priya Patel',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-        role: 'member',
-        joinedAt: '2026-08-11',
-      },
-      {
-        userId: 'user-103',
-        name: 'Rohan Gupta',
-        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-        role: 'member',
-        joinedAt: '2026-08-12',
-      },
-    ],
-  },
-  {
-    id: 'grp-hackathon-alpha',
-    name: 'Campus Hackathon 2026 Squad',
-    description: 'Sprint planning, idea brainstorming, and fast prototyping for the Inter-College Hackathon',
-    category: 'Hackathon Team',
-    avatarColor: 'from-indigo-600 to-purple-600',
-    creatorId: 'user-102',
-    creatorName: 'Priya Patel',
-    isPrivate: false,
-    createdAt: '2026-08-15',
-    adminIds: ['user-102'],
-    members: [
-      {
-        userId: 'user-101',
-        name: 'Aarav Sharma',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-        role: 'member',
-        joinedAt: '2026-08-15',
-      },
-      {
-        userId: 'user-102',
-        name: 'Priya Patel',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-        role: 'admin',
-        joinedAt: '2026-08-15',
-      },
-    ],
-  },
-];
-
-let groupMessagesDb = {
-  'grp-major-project-2026': [
-    {
-      id: 'gmsg-1',
-      groupId: 'grp-major-project-2026',
-      senderId: 'user-101',
-      senderName: 'Aarav Sharma',
-      senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-      senderRole: 'admin',
-      text: 'Hey team! Welcome to our official project group. I added the Node.js backend server structure and live Firestore integration.',
-      timestamp: '10:15 AM',
-      createdAt: 1723200000000,
-      reactions: { '🔥': ['user-102', 'user-103'], '🚀': ['user-101'] },
-    },
-    {
-      id: 'gmsg-2',
-      groupId: 'grp-major-project-2026',
-      senderId: 'user-102',
-      senderName: 'Priya Patel',
-      senderAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-      senderRole: 'member',
-      text: 'Awesome! Can you share the Socket.IO event handler for syncing the chat messages in real time?',
-      timestamp: '10:18 AM',
-      createdAt: 1723200180000,
-      reactions: { '👍': ['user-101'] },
-    },
-  ],
-};
+let chatGroupsDb = [];
+let groupMessagesDb = {};
 
 // GET /api/chat/groups
 router.get('/groups', (req, res) => {
@@ -115,16 +23,16 @@ router.post('/groups', (req, res) => {
     description: description || '',
     category: category || 'Project Collaboration',
     avatarColor: avatarColor || 'from-emerald-500 to-teal-700',
-    creatorId: creatorId || 'user-101',
-    creatorName: creatorName || 'Aarav Sharma',
+    creatorId: creatorId || 'student-member',
+    creatorName: creatorName || 'Student',
     isPrivate: Boolean(isPrivate),
     createdAt: new Date().toISOString().split('T')[0],
-    adminIds: [creatorId || 'user-101'],
+    adminIds: [creatorId || 'student-member'],
     members: [
       {
-        userId: creatorId || 'user-101',
-        name: creatorName || 'Aarav Sharma',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+        userId: creatorId || 'student-member',
+        name: creatorName || 'Student',
+        avatar: '',
         role: 'admin',
         joinedAt: new Date().toISOString().split('T')[0],
       },
@@ -158,9 +66,9 @@ router.post('/groups/:groupId/messages', (req, res) => {
   const newMessage = {
     id: `gmsg-${Date.now()}`,
     groupId,
-    senderId: senderId || 'user-101',
-    senderName: senderName || 'Aarav Sharma',
-    senderAvatar: senderAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+    senderId: senderId || 'student-member',
+    senderName: senderName || 'Member',
+    senderAvatar: senderAvatar || '',
     senderRole: senderRole || 'member',
     text: text || '',
     codeSnippet: codeSnippet || undefined,

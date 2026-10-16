@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
+import { useTheme } from '../../context/ThemeContext';
 import {
   User,
   Shield,
@@ -13,6 +14,7 @@ import {
   Crown,
   Moon,
   Sun,
+  Monitor,
   Bell,
   Sliders,
   Database,
@@ -50,23 +52,11 @@ export const SettingsView: React.FC = () => {
   const [skillsStr, setSkillsStr] = useState((user?.skills || []).join(', '));
   const [hourlyRate, setHourlyRate] = useState(user?.hourlyRate?.toString() || '35');
 
-  // Preferences State
-  const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
+  // Theme & Preferences State
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [notifyGigs, setNotifyGigs] = useState(true);
   const [notifyClasses, setNotifyClasses] = useState(true);
   const [notifyMentors, setNotifyMentors] = useState(true);
-
-  const toggleDarkMode = () => {
-    if (document.documentElement.classList.contains('dark')) {
-      document.documentElement.classList.remove('dark');
-      setIsDarkMode(false);
-      showToast('Light mode activated');
-    } else {
-      document.documentElement.classList.add('dark');
-      setIsDarkMode(true);
-      showToast('Dark mode activated');
-    }
-  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,61 +371,109 @@ export const SettingsView: React.FC = () => {
 
       {/* Tab 2: Appearance & Theme */}
       {activeSubTab === 'appearance' && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+        <div className="bg-white dark:bg-[#1B1B22] p-6 rounded-2xl border border-slate-200 dark:border-[#30303A] shadow-xs space-y-6">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Theme & Interface</h2>
-            <p className="text-xs text-slate-500">Customize the visual theme and contrast modes for late-night coding.</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-[#F5F5F7]">Theme & Interface</h2>
+            <p className="text-xs text-slate-500 dark:text-[#A1A1AA]">
+              Customize the visual display across the application. Choices persist across reloads.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Light Mode */}
             <div
-              onClick={toggleDarkMode}
-              className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                isDarkMode
-                  ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/30'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+              onClick={() => {
+                setTheme('light');
+                showToast('☀️ Light mode enabled');
+              }}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-3 ${
+                theme === 'light'
+                  ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20'
+                  : 'border-slate-200 dark:border-[#30303A] hover:border-slate-300 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-[#111114]/50'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-slate-900 text-amber-300">
-                  <Moon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Dark Mode</h3>
-                  <p className="text-xs text-slate-500">High contrast for code editing & dark interfaces</p>
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={isDarkMode}
-                onChange={toggleDarkMode}
-                className="w-4 h-4 text-indigo-600 rounded"
-              />
-            </div>
-
-            <div
-              onClick={toggleDarkMode}
-              className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                !isDarkMode
-                  ? 'border-indigo-500 bg-indigo-50/20'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-amber-100 text-amber-700">
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 rounded-xl bg-amber-100 text-amber-700">
                   <Sun className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Light Mode</h3>
-                  <p className="text-xs text-slate-500">Clean, crisp daylight reading view</p>
-                </div>
+                <input
+                  type="radio"
+                  name="theme_choice"
+                  checked={theme === 'light'}
+                  onChange={() => setTheme('light')}
+                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                />
               </div>
-              <input
-                type="checkbox"
-                checked={!isDarkMode}
-                onChange={toggleDarkMode}
-                className="w-4 h-4 text-indigo-600 rounded"
-              />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-[#F5F5F7]">Light Mode</h3>
+                <p className="text-xs text-slate-500 dark:text-[#A1A1AA] mt-0.5">
+                  Crisp daylight reading view with soft lavender highlights
+                </p>
+              </div>
+            </div>
+
+            {/* Dark Mode */}
+            <div
+              onClick={() => {
+                setTheme('dark');
+                showToast('🌙 Dark mode enabled');
+              }}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-3 ${
+                theme === 'dark'
+                  ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20'
+                  : 'border-slate-200 dark:border-[#30303A] hover:border-slate-300 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-[#111114]/50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 rounded-xl bg-slate-900 text-indigo-400 border border-slate-700">
+                  <Moon className="w-5 h-5" />
+                </div>
+                <input
+                  type="radio"
+                  name="theme_choice"
+                  checked={theme === 'dark'}
+                  onChange={() => setTheme('dark')}
+                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-[#F5F5F7]">Dark Mode</h3>
+                <p className="text-xs text-slate-500 dark:text-[#A1A1AA] mt-0.5">
+                  High-contrast dark canvas (#111114 / #1B1B22) for night study
+                </p>
+              </div>
+            </div>
+
+            {/* System Preference */}
+            <div
+              onClick={() => {
+                setTheme('system');
+                showToast('💻 System theme preference synchronized');
+              }}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-3 ${
+                theme === 'system'
+                  ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20'
+                  : 'border-slate-200 dark:border-[#30303A] hover:border-slate-300 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-[#111114]/50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  <Monitor className="w-5 h-5" />
+                </div>
+                <input
+                  type="radio"
+                  name="theme_choice"
+                  checked={theme === 'system'}
+                  onChange={() => setTheme('system')}
+                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-[#F5F5F7]">System Preference</h3>
+                <p className="text-xs text-slate-500 dark:text-[#A1A1AA] mt-0.5">
+                  Automatically syncs with your device / OS appearance setting ({resolvedTheme})
+                </p>
+              </div>
             </div>
           </div>
         </div>

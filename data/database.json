@@ -1,0 +1,20 @@
+{
+  "users": [],
+  "resources": [],
+  "gigs": [],
+  "liveClasses": [],
+  "threads": [],
+  "chatHistory": [],
+  "reports": [],
+  "transactions": [],
+  "collegeInfo": {
+    "collegeName": "JD College of Engineering & Management",
+    "shortName": "JDCOEM",
+    "address": "Khandala, Post: Valni, Near Hanuman Temple, Borgaon Dam, Kalmeshwar Road, Nagpur, Maharashtra 441501",
+    "affiliation": "Affiliated to Dr. Babasaheb Ambedkar Technological University (DBATU) and RTMNU Nagpur",
+    "approval": "Approved by AICTE New Delhi and DTE Maharashtra",
+    "contactEmail": "info@jdcoem.ac.in",
+    "phone": "+91 712 2023001",
+    "website": "https://jdcoem.ac.in"
+  }
+}

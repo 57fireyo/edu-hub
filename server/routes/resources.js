@@ -1,63 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-let resourcesDb = [
-  {
-    id: 'res-1',
-    title: 'Complete Distributed Systems Lecture Notes (CS601)',
-    description: 'Comprehensive chapter-wise lecture notes covering MapReduce, Raft consensus, Paxos, and CAP theorem.',
-    category: 'Engineering & CS',
-    type: 'pdf',
-    author: 'Dr. Ramesh Kulkarni',
-    authorRole: 'faculty',
-    authorId: 'fac-01',
-    url: 'https://arxiv.org/pdf/2005.11401.pdf',
-    downloadUrl: 'https://arxiv.org/pdf/2005.11401.pdf',
-    fileSize: '4.2 MB',
-    rating: 4.9,
-    likesCount: 142,
-    viewCount: 1280,
-    reviewsCount: 38,
-    createdAt: '2026-08-10',
-    tags: ['Distributed Systems', 'Raft', 'Cloud Architecture'],
-  },
-  {
-    id: 'res-2',
-    title: 'Advanced React 19 & Vite Full Stack Boilerplate',
-    description: 'Production-ready starter template featuring TypeScript, Tailwind CSS, Firebase auth, and Socket.io group messaging.',
-    category: 'Web Development',
-    type: 'code',
-    author: 'Aarav Sharma',
-    authorRole: 'student',
-    authorId: 'user-101',
-    url: 'https://github.com/facebook/react',
-    downloadUrl: 'https://github.com/facebook/react',
-    fileSize: '1.8 MB',
-    rating: 4.8,
-    likesCount: 95,
-    viewCount: 890,
-    reviewsCount: 22,
-    createdAt: '2026-08-18',
-    tags: ['React', 'TypeScript', 'Tailwind', 'FullStack'],
-  },
-  {
-    id: 'res-3',
-    title: 'Deep Learning & Neural Networks Video Masterclass',
-    description: 'Full semester video walkthrough covering backpropagation, Transformers, Attention mechanisms, and PyTorch.',
-    category: 'Artificial Intelligence',
-    type: 'video',
-    author: 'Prof. Ananya Sen',
-    authorRole: 'faculty',
-    authorId: 'fac-02',
-    url: 'https://www.youtube.com/watch?v=aircAruvnKk',
-    rating: 5.0,
-    likesCount: 280,
-    viewCount: 3400,
-    reviewsCount: 64,
-    createdAt: '2026-08-15',
-    tags: ['AI/ML', 'PyTorch', 'Transformers', 'Deep Learning'],
-  }
-];
+let resourcesDb = [];
 
 // GET /api/resources (with category & search query filters)
 router.get('/', (req, res) => {

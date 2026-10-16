@@ -43,12 +43,7 @@ export const LiveClassesView: React.FC = () => {
 
   // Chat State
   const [streamComment, setStreamComment] = useState('');
-  const [comments, setComments] = useState<Array<{ user: string; text: string; time: string }>>([
-    { user: 'Sarah Jenkins', text: 'Protocol buffers reduce network payload by over 60% compared to REST JSON!', time: '18:02' },
-    { user: 'Alex Rivera', text: 'Can we inspect how the Docker healthcheck probe binds with Kubernetes liveness?', time: '18:04' },
-    { user: 'Dr. Chen', text: 'Yes, David is about to show the multi-stage Dockerfile definition on line 24.', time: '18:05' },
-    { user: 'Elena Rostova', text: 'The binary gRPC wire protocol handles multiplexed bidirectional streams seamlessly!', time: '18:08' },
-  ]);
+  const [comments, setComments] = useState<Array<{ user: string; text: string; time: string }>>([]);
 
   // Review State for Live Class
   const [classRating, setClassRating] = useState<number>(5);
@@ -101,7 +96,7 @@ export const LiveClassesView: React.FC = () => {
 
   const handleClassReviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!classReviewComment.trim()) {
+    if (!classReviewComment.trim() || !activeStream) {
       showToast('Please enter your review feedback');
       return;
     }
@@ -109,7 +104,23 @@ export const LiveClassesView: React.FC = () => {
     setClassReviewComment('');
   };
 
-  const currentReviews = activeStream.reviews || [];
+  const currentReviews = activeStream?.reviews || [];
+
+  if (!activeStream) {
+    return (
+      <div id="live-classes-view" className="space-y-6 animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-[#1B1B22] p-10 rounded-2xl border border-slate-200 dark:border-[#30303A] text-center space-y-3">
+          <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 dark:bg-[#111114] flex items-center justify-center text-slate-400">
+            <Tv className="w-6 h-6" />
+          </div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-[#F5F5F7]">No Live Classes Scheduled</h2>
+          <p className="text-xs text-slate-500 dark:text-[#A1A1AA] max-w-md mx-auto">
+            Live masterclasses and lectures scheduled by instructors and alumni mentors will appear here.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="live-classes-view" className="space-y-6 animate-in fade-in duration-200">

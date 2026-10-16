@@ -6,34 +6,7 @@ const bcrypt = require('bcryptjs');
 const JWT_SECRET = process.env.JWT_SECRET || 'eduhub-secure-jwt-secret-key-2026';
 
 // In-memory mock database for fallback
-const usersDb = [
-  {
-    id: 'user-101',
-    name: 'Aarav Sharma',
-    email: 'aarav.sharma@eduhub.edu',
-    passwordHash: '$2a$10$wN9P3bVwF7L.J4yY/1Q5qOPkLzLzq7RkM0Wl4y1.Q2/X9.V1p2sQ.', // 'password123'
-    btId: 'BT24CS042',
-    role: 'student',
-    branch: 'Computer Science',
-    semester: '6th',
-    yearOfStudy: '3rd Year',
-    academicTrack: 'CS 2024 Track',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-    isPro: true,
-  },
-  {
-    id: 'user-102',
-    name: 'Priya Patel',
-    email: 'priya.patel@alumni.eduhub.edu',
-    passwordHash: '$2a$10$wN9P3bVwF7L.J4yY/1Q5qOPkLzLzq7RkM0Wl4y1.Q2/X9.V1p2sQ.',
-    btId: 'BT20CS088',
-    role: 'alumni',
-    branch: 'Computer Science',
-    academicTrack: 'Alumni Network (SDE-2 at Google, Class of 2022)',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-    isPro: true,
-  }
-];
+const usersDb = [];
 
 // Helper: Verify Token Middleware
 function authenticateToken(req, res, next) {

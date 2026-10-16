@@ -15,7 +15,7 @@ import {
   serverTimestamp,
   Unsubscribe,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import {
   ResourceItem,
   ChatGroup,
@@ -31,6 +31,53 @@ import {
   AcademicBranch,
   CollegeStats,
 } from '../types';
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): FirestoreErrorInfo {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.warn('Firestore Operation Diagnostic: ', JSON.stringify(errInfo));
+  return errInfo;
+}
 import {
   sampleResources,
   sampleChatGroups,
@@ -418,7 +465,8 @@ export function subscribeToDirectMessages(
       callback(dms);
     },
     (error) => {
-      console.error('Error listening to DMs:', error);
+      handleFirestoreError(error, OperationType.LIST, COLLECTIONS.DIRECT_MESSAGES);
+      console.warn('Direct Messages listener notice (fallback to local mock data):', error);
     }
   );
 }

@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Radio,
   Lock,
+  Video,
 } from 'lucide-react';
 
 interface NavItemConfig {
@@ -58,6 +59,7 @@ export const Sidebar: React.FC = () => {
     { id: 'freelance', label: 'Freelance Hub', icon: Briefcase },
     { id: 'mentorship', label: 'Mentorship', icon: Users2 },
     { id: 'messages', label: 'Messages & Social', icon: MessageSquare },
+    { id: 'meetings', label: 'Video Meetings', badge: 'NEW', icon: Video },
   ];
 
   const systemItems: NavItemConfig[] = [
