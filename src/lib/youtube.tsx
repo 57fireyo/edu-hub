@@ -8,23 +8,34 @@ import React from 'react';
  * - https://www.youtube.com/watch?v=VIDEO_ID
  * - https://youtu.be/VIDEO_ID
  * - https://www.youtube.com/embed/VIDEO_ID
+ * - https://www.youtube.com/shorts/VIDEO_ID
  * - Raw 11-char ID
  */
 export function getYouTubeVideoId(url?: string, defaultId: string = '09_LlHjoEiY'): string {
   if (!url || typeof url !== 'string') return defaultId;
   const trimmed = url.trim();
 
-  // If already 11-character alphanumeric/dash/underscore string
+  // If already exactly 11-character alphanumeric/dash/underscore string
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
     return trimmed;
   }
 
-  // Regex matching standard YouTube URL structures
-  const match = trimmed.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/
-  );
-  if (match && match[1]) {
-    return match[1];
+  // Handle youtu.be/VIDEO_ID
+  const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})(?:[&?#]|$)/);
+  if (shortMatch && shortMatch[1]) {
+    return shortMatch[1];
+  }
+
+  // Handle youtube.com/embed/VIDEO_ID or youtube.com/shorts/VIDEO_ID
+  const embedMatch = trimmed.match(/youtube\.com\/(?:embed|shorts|v)\/([a-zA-Z0-9_-]{11})(?:[&?#]|$)/);
+  if (embedMatch && embedMatch[1]) {
+    return embedMatch[1];
+  }
+
+  // Handle youtube.com/watch?v=VIDEO_ID or youtube.com/watch?...&v=VIDEO_ID
+  const watchMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})(?:[&?#]|$)/);
+  if (watchMatch && watchMatch[1]) {
+    return watchMatch[1];
   }
 
   return defaultId;

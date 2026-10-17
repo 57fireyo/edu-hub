@@ -53,11 +53,12 @@ export const ResourcesView: React.FC = () => {
     addActivityHistory,
   } = useApp();
 
-  // Sequential Hierarchy Filters
+  // Academic Search & Hierarchy Filters (Year, Semester, Subject, Unit, Type)
   const [selectedYear, setSelectedYear] = useState<string>('All');
-  const [selectedBranch, setSelectedBranch] = useState<string>('All');
+  const [selectedSemester, setSelectedSemester] = useState<string>('All');
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
-  const [typeFilter, setTypeFilter] = useState<'all' | ResourceType>('all');
+  const [selectedUnit, setSelectedUnit] = useState<string>('All');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'pdf' | 'Video Lectures' | 'Articles'>('all');
   const [localSearch, setLocalSearch] = useState<string>('');
   const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'likes' | 'newest'>('popular');
   const [onlySaved, setOnlySaved] = useState<boolean>(false);
@@ -66,27 +67,30 @@ export const ResourcesView: React.FC = () => {
   const [isStructureModalOpen, setIsStructureModalOpen] = useState<boolean>(false);
   const [isAddResourceModalOpen, setIsAddResourceModalOpen] = useState<boolean>(false);
 
-  // Subjects filtered by current year & branch selection
+  const semestersList = ['All', 'Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8'];
+  const unitsList = ['All', 'Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5', 'Unit 6'];
+
+  // Subjects filtered by current year & semester selection (branch-agnostic)
   const availableSubjects = useMemo(() => {
     return academicSubjects.filter((subj) => {
-      const yearMatch = selectedYear === 'All' || subj.academicYear === selectedYear;
-      const branchMatch = selectedBranch === 'All' || subj.branch === selectedBranch;
-      return yearMatch && branchMatch;
+      const yearMatch = selectedYear === 'All' || subj.academicYear === selectedYear || subj.year === selectedYear;
+      const semMatch = selectedSemester === 'All' || subj.semester === selectedSemester;
+      return yearMatch && semMatch;
     });
-  }, [academicSubjects, selectedYear, selectedBranch]);
+  }, [academicSubjects, selectedYear, selectedSemester]);
 
-  // Overall filtering
+  // Overall filtering across academic parameters (no branch filtering)
   const filtered = resources.filter((item) => {
-    // Academic hierarchy matching
-    const matchesYear = selectedYear === 'All' || item.academicYear === selectedYear;
-    const matchesBranch = selectedBranch === 'All' || item.branch === selectedBranch;
+    const matchesYear = selectedYear === 'All' || item.academicYear === selectedYear || item.year === selectedYear;
+    const matchesSemester = selectedSemester === 'All' || item.semester === selectedSemester;
     const matchesSubject = selectedSubject === 'All' || item.subjectCode === selectedSubject;
+    const matchesUnit = selectedUnit === 'All' || (item.unitOrModule && item.unitOrModule.toLowerCase().includes(selectedUnit.toLowerCase()));
     const isItemVideo = item.type === 'Video Lectures' || item.type === 'video' || !!item.videoUrl;
     const matchesType =
       typeFilter === 'all' ||
-      item.type === typeFilter ||
+      (typeFilter === 'pdf' && (item.type === 'pdf' || item.type === 'Notes')) ||
       (typeFilter === 'Video Lectures' && isItemVideo) ||
-      (typeFilter === 'Notes' && (item.type === 'pdf' || item.type === 'Notes'));
+      (typeFilter === 'Articles' && (item.type === 'article' || item.type === 'code' || item.type === 'Articles'));
     const matchesSaved = !onlySaved || item.saved;
 
     // Search text query
@@ -97,9 +101,11 @@ export const ResourcesView: React.FC = () => {
       (item.description && item.description.toLowerCase().includes(query)) ||
       (item.subjectCode && item.subjectCode.toLowerCase().includes(query)) ||
       (item.author && item.author.toLowerCase().includes(query)) ||
+      (item.semester && item.semester.toLowerCase().includes(query)) ||
+      (item.unitOrModule && item.unitOrModule.toLowerCase().includes(query)) ||
       (item.tags && item.tags.some((t) => t && t.toLowerCase().includes(query)));
 
-    return matchesYear && matchesBranch && matchesSubject && matchesType && matchesSaved && matchesSearch;
+    return matchesYear && matchesSemester && matchesSubject && matchesUnit && matchesType && matchesSaved && matchesSearch;
   });
 
   // Sorting
@@ -110,16 +116,17 @@ export const ResourcesView: React.FC = () => {
     return 0;
   });
 
-  // Breadcrumb items calculation
+  // Breadcrumb items calculation (no branch link)
   const breadcrumbItems = [
-    { label: 'Resources' },
-    ...(selectedYear !== 'All' ? [{ label: selectedYear, onClick: () => { setSelectedBranch('All'); setSelectedSubject('All'); } }] : []),
-    ...(selectedBranch !== 'All' ? [{ label: `Branch ${selectedBranch}`, onClick: () => setSelectedSubject('All') }] : []),
-    ...(selectedSubject !== 'All' ? [{ label: selectedSubject }] : []),
+    { label: 'Study Library' },
+    ...(selectedYear !== 'All' ? [{ label: selectedYear, onClick: () => { setSelectedSemester('All'); setSelectedSubject('All'); setSelectedUnit('All'); } }] : []),
+    ...(selectedSemester !== 'All' ? [{ label: selectedSemester, onClick: () => { setSelectedSubject('All'); setSelectedUnit('All'); } }] : []),
+    ...(selectedSubject !== 'All' ? [{ label: selectedSubject, onClick: () => setSelectedUnit('All') }] : []),
+    ...(selectedUnit !== 'All' ? [{ label: selectedUnit }] : []),
   ];
 
   return (
-    <div id="resources-view" className="space-y-6 animate-in fade-in duration-200 pb-12">
+    <div id="resources-view" className="space-y-6 animate-in fade-in duration-200 pb-12 bg-white">
       {/* Explicit Breadcrumb Navigation */}
       <Breadcrumb category="Academic Portal" items={breadcrumbItems} />
 
@@ -239,40 +246,36 @@ export const ResourcesView: React.FC = () => {
           </div>
         </div>
 
-        {/* Level 2: Engineering Branch Selector */}
+        {/* Level 2: Semester Selector */}
         <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
-              <span>2. Engineering Branch Department</span>
+              <span>2. Semester</span>
             </span>
-            {selectedBranch !== 'All' && (
+            {selectedSemester !== 'All' && (
               <button
-                onClick={() => setSelectedBranch('All')}
+                onClick={() => setSelectedSemester('All')}
                 className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline"
               >
-                Reset Branch
+                Reset Semester
               </button>
             )}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {['All', ...academicBranches.map((b) => b.code)].map((bCode) => {
-              const fullBranch = academicBranches.find((b) => b.code === bCode);
-              return (
-                <button
-                  key={bCode}
-                  onClick={() => setSelectedBranch(bCode)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    selectedBranch === bCode
-                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-                  title={fullBranch?.name || 'All Branches'}
-                >
-                  {bCode === 'All' ? 'All Branches' : bCode}
-                </button>
-              );
-            })}
+            {semestersList.map((sem) => (
+              <button
+                key={sem}
+                onClick={() => setSelectedSemester(sem)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedSemester === sem
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {sem === 'All' ? 'All Semesters' : sem}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -323,13 +326,46 @@ export const ResourcesView: React.FC = () => {
           </div>
         </div>
 
-        {/* Level 4: Search Bar & Format Tabs */}
+        {/* Level 4: Syllabus Unit / Module */}
+        <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-indigo-500" />
+              <span>4. Syllabus Unit / Module</span>
+            </span>
+            {selectedUnit !== 'All' && (
+              <button
+                onClick={() => setSelectedUnit('All')}
+                className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Reset Unit
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {unitsList.map((unit) => (
+              <button
+                key={unit}
+                onClick={() => setSelectedUnit(unit)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedUnit === unit
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {unit === 'All' ? 'All Units' : unit}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Level 5: Search Bar & Format Tabs */}
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Format Tabs */}
+          {/* Format Tabs (Without Notes heading) */}
           <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             {[
               { id: 'all', label: 'All Formats', icon: Layers },
-              { id: 'Notes', label: 'PDFs & Notes', icon: FileText },
+              { id: 'pdf', label: 'PDFs & Previous Year Papers', icon: FileText },
               { id: 'Video Lectures', label: 'Video Lectures', icon: Video },
               { id: 'Articles', label: 'Code & Snippets', icon: Code2 },
             ].map((tab) => {
@@ -358,7 +394,7 @@ export const ResourcesView: React.FC = () => {
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search notes, DSA, unit tests..."
+                placeholder="Search subject, unit, question papers..."
                 value={localSearch}
                 onChange={(e) => setLocalSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
@@ -413,7 +449,7 @@ export const ResourcesView: React.FC = () => {
               No course materials found for this selection
             </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Try adjusting your Year, Branch, or Subject filters, or upload a new resource.
+              Try adjusting your Year, Semester, Subject, or Unit filters, or upload a new resource.
             </p>
             <button
               onClick={() => setIsAddResourceModalOpen(true)}
@@ -433,17 +469,17 @@ export const ResourcesView: React.FC = () => {
                 {/* Visual Top Banner */}
                 <div className="p-4 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-slate-50 dark:to-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-indigo-600 text-white shadow-xs">
                         {item.subjectCode || 'DSA'}
                       </span>
                       <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-white/80 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                        {item.academicYear || '2nd Year'} • {item.branch || 'CY'}
+                        {item.academicYear || '2nd Year'}{item.semester ? ` • ${item.semester}` : ''}{item.unitOrModule ? ` • ${item.unitOrModule}` : ''}
                       </span>
                     </div>
                     <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
                       {item.type === 'Video Lectures' ? <Video className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                      <span>{item.type}</span>
+                      <span>{(item.type === 'pdf' || item.type === 'Notes') ? 'PDF Paper' : item.type === 'Video Lectures' ? 'Video Lecture' : 'Code / Snippet'}</span>
                     </span>
                   </div>
 
@@ -646,7 +682,7 @@ export const ResourcesView: React.FC = () => {
         isOpen={isAddResourceModalOpen}
         onClose={() => setIsAddResourceModalOpen(false)}
         defaultYear={selectedYear !== 'All' ? selectedYear : '2nd Year'}
-        defaultBranch={selectedBranch !== 'All' ? selectedBranch : 'CY'}
+        defaultBranch="CY"
         defaultSubject={selectedSubject !== 'All' ? selectedSubject : 'DSA'}
       />
     </div>

@@ -50,7 +50,7 @@ export const Sidebar: React.FC = () => {
 
   const academicItems: NavItemConfig[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'resources', label: 'Resources (Notes/PDFs)', badge: `${resources.length}`, icon: BookOpen },
+    { id: 'resources', label: 'Study Library', badge: `${resources.length}`, icon: BookOpen },
     { id: 'live-classes', label: 'Live Classes', badge: liveClasses.some((c) => c.isLiveNow) ? 'LIVE' : undefined, icon: Tv },
     { id: 'code-editor', label: 'Code Editor & AI Debugger', icon: Code2 },
   ];

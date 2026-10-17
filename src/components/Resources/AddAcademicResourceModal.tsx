@@ -35,7 +35,7 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
   const { addResource, academicSubjects, academicBranches, academicYears, showToast } = useApp();
   const { user } = useAuth();
 
-  const [resourceType, setResourceType] = useState<ResourceType>('Notes');
+  const [resourceType, setResourceType] = useState<ResourceType>('pdf');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Algorithms');
@@ -165,7 +165,7 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
             </label>
             <div className="grid grid-cols-3 gap-2.5">
               {[
-                { type: 'Notes' as ResourceType, label: 'PDF Document / Notes', icon: FileText },
+                { type: 'pdf' as ResourceType, label: 'PDF Document / Paper', icon: FileText },
                 { type: 'Video Lectures' as ResourceType, label: 'Video / YouTube', icon: Video },
                 { type: 'Articles' as ResourceType, label: 'Markdown / Snippet', icon: Code2 },
               ].map((fmt) => {
@@ -240,7 +240,7 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
               </label>
               <input
                 type="text"
-                placeholder="e.g. DSA Complete Unit 1 to 4 Hand-Written Lecture Notes"
+                placeholder="e.g. DSA Complete Unit 1 to 4 Verified Syllabus & Previous Year Paper"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
@@ -281,7 +281,7 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
           </div>
 
           {/* Format Specific Fields */}
-          {resourceType === 'Notes' && (
+          {(resourceType === 'Notes' || resourceType === 'pdf') && (
             <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
               <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-indigo-600" />
@@ -450,7 +450,7 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
           {resourceType === 'Articles' && (
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                Markdown Study Notes & Code Snippet
+                Syllabus Key Points & Code Theorems
               </label>
               <textarea
                 rows={6}

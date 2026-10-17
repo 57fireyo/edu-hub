@@ -51,6 +51,26 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handleUrlRoute);
   }, [setActiveTab]);
 
+  // Redirect legacy study-channel routes to messages
+  React.useEffect(() => {
+    const handleRedirect = () => {
+      const path = (window.location.pathname || '').toLowerCase();
+      const hash = (window.location.hash || '').toLowerCase();
+      if (
+        path.includes('study-channel') ||
+        path.includes('/channels') ||
+        hash.includes('study-channel') ||
+        hash.includes('channels/study')
+      ) {
+        window.history.replaceState({}, '', '/#messages');
+        setActiveTab('messages');
+      }
+    };
+    handleRedirect();
+    window.addEventListener('hashchange', handleRedirect);
+    return () => window.removeEventListener('hashchange', handleRedirect);
+  }, [setActiveTab]);
+
   const activeAnnouncement = announcements && announcements.length > 0
     ? announcements.find((a) => a.active && a.id !== closedAnnouncementId)
     : null;
@@ -85,7 +105,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-indigo-600 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans antialiased selection:bg-indigo-600 selection:text-white">
       {/* Top Navbar */}
       <TopNavbar />
 
@@ -130,7 +150,7 @@ const AppContent: React.FC = () => {
         {/* Dynamic Content Canvas */}
         <main
           id="main-canvas"
-          className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 md:pb-8 overflow-y-auto max-w-full"
+          className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 md:pb-8 overflow-y-auto max-w-full bg-white"
         >
           {renderActiveView()}
         </main>
@@ -139,7 +159,7 @@ const AppContent: React.FC = () => {
       {/* Persistent Global Footer */}
       <footer
         id="global-footer"
-        className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 w-full text-xs text-slate-500 dark:text-slate-400 py-5 px-6 md:px-12 mt-auto transition-colors"
+        className="bg-white border-t border-slate-200 w-full text-xs text-slate-500 py-5 px-6 md:px-12 mt-auto transition-colors"
       >
         <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <span className="font-medium text-slate-800 dark:text-slate-200">

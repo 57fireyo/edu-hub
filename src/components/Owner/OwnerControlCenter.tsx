@@ -34,9 +34,6 @@ import {
   Scale,
   GraduationCap,
   Settings2,
-  FileUp,
-  Youtube,
-  HelpCircle,
 } from 'lucide-react';
 import { ResourceType } from '../../types';
 import { CreditsSection } from '../Credits/CreditsSection';
@@ -116,8 +113,6 @@ export const OwnerControlCenter: React.FC = () => {
   const [pdfSize, setPdfSize] = useState('3.8 MB');
   const [pdfSnippet, setPdfSnippet] = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
-  const [uploadedPdfFileName, setUploadedPdfFileName] = useState('');
-  const [uploadedPdfBase64, setUploadedPdfBase64] = useState<string | null>(null);
 
   // Video Form State
   const [videoTitle, setVideoTitle] = useState('');
@@ -125,7 +120,7 @@ export const OwnerControlCenter: React.FC = () => {
   const [videoAuthor, setVideoAuthor] = useState('Staff Engineer');
   const [videoAuthorRole, setVideoAuthorRole] = useState('Industry Architect');
   const [videoDuration, setVideoDuration] = useState('45 min');
-  const [videoUrl, setVideoUrl] = useState('https://www.youtube.com/watch?v=sample');
+  const [videoUrl, setVideoUrl] = useState('https://www.youtube.com/watch?v=09_LlHjoEiY');
   const [videoThumb, setVideoThumb] = useState(
     'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=600'
   );
@@ -178,39 +173,6 @@ export const OwnerControlCenter: React.FC = () => {
     );
   }
 
-  // Handle Local PDF file upload
-  const handlePdfFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
-      showToast('⚠️ Please select a valid .pdf file.');
-      return;
-    }
-
-    const fileSizeFormatted = file.size > 1024 * 1024
-      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-      : `${Math.max(1, Math.round(file.size / 1024))} KB`;
-
-    setUploadedPdfFileName(file.name);
-    setPdfSize(fileSizeFormatted);
-    if (!pdfTitle.trim()) {
-      // Auto populate title from file name without .pdf extension
-      setPdfTitle(file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '));
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setUploadedPdfBase64(result);
-      showToast(`✓ "${file.name}" loaded ready for publishing!`);
-    };
-    reader.onerror = () => {
-      showToast('Failed to read PDF file from disk.');
-    };
-    reader.readAsDataURL(file);
-  };
-
   // Handle PDF Submit
   const handleAddPdf = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,9 +180,6 @@ export const OwnerControlCenter: React.FC = () => {
       showToast('Please provide a document title.');
       return;
     }
-
-    const effectiveUrl = uploadedPdfBase64 || pdfUrl.trim() || 'https://eduhub.edu/docs/sample-curriculum.pdf';
-
     addResource({
       title: pdfTitle.trim(),
       description:
@@ -232,21 +191,15 @@ export const OwnerControlCenter: React.FC = () => {
       authorRole: pdfAuthorRole.trim() || 'Academic Faculty Lead',
       pages: Number(pdfPages) || 16,
       size: pdfSize.trim() || '2.5 MB',
-      views: '1 view',
-      fileName: uploadedPdfFileName || `${pdfTitle.trim().replace(/\s+/g, '_')}.pdf`,
-      fileUrl: effectiveUrl,
-      url: effectiveUrl,
-      downloadUrl: effectiveUrl,
+      views: '1.2k views',
       contentSnippet:
         pdfSnippet.trim() ||
-        `Downloaded PDF document: ${uploadedPdfFileName || pdfTitle.trim()}. Complete verified notes for semester revision.`,
+        'Comprehensive syllabus walkthrough including definitions, time complexity matrices, and faculty practice problems.',
+      url: pdfUrl.trim() || 'https://eduhub.edu/docs/sample-curriculum.pdf',
     });
     setPdfTitle('');
     setPdfSnippet('');
-    setPdfUrl('');
-    setUploadedPdfFileName('');
-    setUploadedPdfBase64(null);
-    showToast('✓ PDF published! Students can now view & download this PDF.');
+    showToast('✓ PDF Document published to Resources catalog!');
   };
 
   // Handle Video Submit
@@ -256,38 +209,25 @@ export const OwnerControlCenter: React.FC = () => {
       showToast('Please provide a video title.');
       return;
     }
-    const cleanUrl = videoUrl.trim() || 'https://www.youtube.com/watch?v=sample';
-    
-    // Auto-detect YouTube video ID to set thumbnail if not customized
-    let detectedThumbnail = videoThumb.trim();
-    if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
-      const match = cleanUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-      if (match && match[1] && (!detectedThumbnail || detectedThumbnail.includes('unsplash'))) {
-        detectedThumbnail = `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
-      }
-    }
-
     addResource({
       title: videoTitle.trim(),
       description:
         videoDesc.trim() ||
-        `Masterclass video lecture covering core architectural patterns and real-world implementations.`,
+        `Masterclass lecture covering core architectural patterns and real-world implementations.`,
       category: videoCategory,
-      type: 'Video Lectures',
+      type: 'video',
       author: videoAuthor.trim() || 'Staff Engineer',
       authorRole: videoAuthorRole.trim() || 'Senior Architect',
       duration: videoDuration.trim() || '30 min',
       thumbnail:
-        detectedThumbnail ||
+        videoThumb.trim() ||
         'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=600',
-      views: '1 view',
-      url: cleanUrl,
-      videoUrl: cleanUrl,
+      views: '850 views',
+      url: videoUrl.trim() || 'https://www.youtube.com/watch?v=09_LlHjoEiY',
     });
     setVideoTitle('');
     setVideoDesc('');
-    setVideoUrl('');
-    showToast('✓ Video Lecture published! Students can watch directly in the portal.');
+    showToast('✓ Video Lecture published to Resources catalog!');
   };
 
   // Handle Website Submit ("or they need to add a thing a website")
@@ -864,76 +804,21 @@ export const OwnerControlCenter: React.FC = () => {
       {activeOwnerTab === 'pdf' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Publish Academic PDF Notes
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Upload any PDF from your system or paste a link. Students can view and download it directly.
-                  </p>
-                </div>
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <FileText className="w-4 h-4" />
               </div>
-            </div>
-
-            {/* Step-by-Step Guide for Owner */}
-            <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-1.5">
-                <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
-                <span>How to upload a PDF from your computer:</span>
-              </span>
-              <ol className="text-[11px] text-slate-600 dark:text-slate-400 list-decimal list-inside space-y-1">
-                <li>Click <strong>&quot;Browse &amp; Pick PDF File&quot;</strong> below and select the .pdf file from your computer.</li>
-                <li>Verify or adjust the document title, academic branch, and page count.</li>
-                <li>Click <strong>&quot;Publish PDF for Student Download&quot;</strong>. Students will see it in the Resources hub with a 1-click &quot;Download PDF&quot; button!</li>
-              </ol>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Publish Academic PDF or Cheatsheet
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Documents are immediately visible to students under the Resources & Compendiums tab.
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleAddPdf} className="space-y-4 text-xs">
-              {/* Step 1: Upload from local system or specify link */}
-              <div className="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800/60 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
-                    <FileUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <span>Upload Downloaded PDF from Your Computer / System</span>
-                  </label>
-                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                    Step 1: Select File
-                  </span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <label className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold cursor-pointer transition-all shadow-xs flex items-center justify-center gap-2 shrink-0">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Browse & Pick PDF File</span>
-                    <input
-                      type="file"
-                      accept=".pdf,application/pdf"
-                      onChange={handlePdfFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-
-                  <div className="flex-1 w-full truncate text-slate-600 dark:text-slate-300">
-                    {uploadedPdfFileName ? (
-                      <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 font-medium">
-                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span className="truncate">{uploadedPdfFileName}</span>
-                        <span className="text-[10px] font-mono text-slate-400 shrink-0">({pdfSize})</span>
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-slate-500 italic block text-center sm:text-left">
-                        Select a .pdf stored on your device so website students can download it.
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Document Title *
@@ -956,7 +841,7 @@ export const OwnerControlCenter: React.FC = () => {
                   <select
                     value={pdfCategory}
                     onChange={(e) => setPdfCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                   >
                     <option value="Algorithms">Algorithms & Data Structures</option>
                     <option value="System Design">System Design & Cloud</option>
@@ -1037,11 +922,11 @@ export const OwnerControlCenter: React.FC = () => {
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Or External PDF Document Link (Optional if already uploaded above)
+                  Document PDF URL / Storage Link (Optional)
                 </label>
                 <input
                   type="text"
-                  placeholder="https://... or leave blank to use the file picked above"
+                  placeholder="https://... or leave default simulated PDF"
                   value={pdfUrl}
                   onChange={(e) => setPdfUrl(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
@@ -1054,7 +939,7 @@ export const OwnerControlCenter: React.FC = () => {
                   className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>Publish PDF for Student Download</span>
+                  <span>Publish PDF to EduHub</span>
                 </button>
               </div>
             </form>
@@ -1114,19 +999,6 @@ export const OwnerControlCenter: React.FC = () => {
                   Include video breakdowns, screen recordings, YouTube tutorials, or high-definition campus streams.
                 </p>
               </div>
-            </div>
-
-            {/* Step-by-Step Guide for Video / YouTube Links */}
-            <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-1.5">
-                <HelpCircle className="w-3.5 h-3.5 text-rose-500" />
-                <span>How to add a YouTube video lecture:</span>
-              </span>
-              <ol className="text-[11px] text-slate-600 dark:text-slate-400 list-decimal list-inside space-y-1">
-                <li>Copy any video link from YouTube (e.g. <code>https://www.youtube.com/watch?v=...</code> or <code>https://youtu.be/...</code>).</li>
-                <li>Paste it in the <strong>Video URL / YouTube Link</strong> input. The system will automatically fetch its high-res thumbnail!</li>
-                <li>Optionally add timestamps/chapter markers, then click <strong>&quot;Publish Video to Lecture Vault&quot;</strong>. Students can watch it directly in the embedded player or open on YouTube.</li>
-              </ol>
             </div>
 
             <form onSubmit={handleAddVideo} className="space-y-4 text-xs">
@@ -1201,39 +1073,17 @@ export const OwnerControlCenter: React.FC = () => {
                 </div>
               </div>
 
-              {/* YouTube paste helper banner */}
-              <div className="p-3.5 bg-red-50/70 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-900/40 space-y-2">
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-xs">
-                  <Youtube className="w-4 h-4" />
-                  <span>Paste Any YouTube Video or Lecture Link</span>
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                  Copy any YouTube URL (e.g. <code>https://www.youtube.com/watch?v=...</code> or <code>https://youtu.be/...</code>). The website portal will automatically embed it so students can watch seamlessly.
-                </p>
-              </div>
-
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Video URL / YouTube Link *
+                  Video URL / Stream Link
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                    value={videoUrl}
-                    onChange={(e) => {
-                      const url = e.target.value;
-                      setVideoUrl(url);
-                      // Auto-update thumbnail if it's YouTube
-                      const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-                      if (match && match[1]) {
-                        setVideoThumb(`https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`);
-                      }
-                    }}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+                <input
+                  type="text"
+                  placeholder="https://youtube.com/watch?v=... or .mp4 URL"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
+                />
               </div>
 
               <div>

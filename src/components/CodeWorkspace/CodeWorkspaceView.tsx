@@ -409,15 +409,15 @@ export const CodeWorkspaceView: React.FC = () => {
               {/* Room Selector */}
               <div className="flex gap-1.5 overflow-x-auto pb-0.5">
                 <button
-                  id="channel-study-group-btn"
-                  onClick={() => setActiveChannel('study-group-cs2024')}
+                  id="workspace-collab-btn"
+                  onClick={() => setActiveChannel('workspace-collab-main')}
                   className={`whitespace-nowrap px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                    activeChannel === 'study-group-cs2024'
+                    activeChannel === 'workspace-collab-main' || activeChannel === 'study-group-cs2024'
                       ? 'bg-indigo-600 text-white'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
-                  👥 CS 2024 Study Group
+                  💻 Live Pair Workspace
                 </button>
                 <button
                   id="channel-mentor-btn"

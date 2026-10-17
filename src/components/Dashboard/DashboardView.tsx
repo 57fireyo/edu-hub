@@ -320,7 +320,7 @@ export const DashboardView: React.FC = () => {
                 <span>Resource Library</span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Curated notes, code repositories, and recorded tutorials for your academic track.
+                Curated syllabus resources, previous year question papers, and recorded tutorials for your academic track.
               </p>
             </div>
             <button

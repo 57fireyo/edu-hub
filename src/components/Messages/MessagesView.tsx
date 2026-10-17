@@ -18,7 +18,6 @@ import {
   User,
   Radio,
   Lock,
-  Hash,
   Clock,
   MessagesSquare,
   Plus,
@@ -30,8 +29,6 @@ export const MessagesView: React.FC = () => {
   const {
     chatMessages,
     sendChatMessage,
-    activeChannel,
-    setActiveChannel,
     friends,
     campusDirectoryUsers,
     directMessages,
@@ -56,8 +53,8 @@ export const MessagesView: React.FC = () => {
 
   const { user } = useAuth();
 
-  // Navigation mode: 'groups' | 'dms' | 'search' | 'friends' | 'channels' | 'blocked'
-  const activeTabMode = activeMessagesSubTab;
+  // Navigation mode: 'groups' | 'dms' | 'search' | 'friends' | 'blocked'
+  const activeTabMode = (activeMessagesSubTab as string) === 'channels' ? 'groups' : activeMessagesSubTab;
   const setActiveTabMode = setActiveMessagesSubTab;
 
   // New DM search modal state
@@ -69,20 +66,9 @@ export const MessagesView: React.FC = () => {
   const [includeCodeSnippet, setIncludeCodeSnippet] = useState<boolean>(false);
   const [codeSnippetText, setCodeSnippetText] = useState<string>('');
 
-  // Channel Input
-  const [channelInput, setChannelInput] = useState<string>('');
-
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [directorySearch, setDirectorySearch] = useState<string>('');
-
-  // Channels
-  const studyChannels = [
-    { id: 'study-group-cs2024', name: 'cs-2024-general', title: 'CS 2024 Study Group', members: 58 },
-    { id: 'algorithms-grind', name: 'algorithms-and-dsa', title: 'LeetCode & DSA Discussion', members: 114 },
-    { id: 'web-dev-freelance', name: 'web-dev-freelance', title: 'Freelance & Client Gigs', members: 89 },
-    { id: 'ai-ml-research', name: 'ai-ml-compendium', title: 'AI & Deep Learning Sync', members: 72 },
-  ];
 
   // Friends categories
   const activeFriends = friends.filter((f) => f.status === 'friend');
@@ -117,15 +103,6 @@ export const MessagesView: React.FC = () => {
     setCodeSnippetText('');
     setIncludeCodeSnippet(false);
   };
-
-  const handleSendChannelMsg = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!channelInput.trim()) return;
-    sendChatMessage(channelInput.trim());
-    setChannelInput('');
-  };
-
-  const currentChannelObj = studyChannels.find((c) => c.id === activeChannel) || studyChannels[0];
 
   return (
     <div
@@ -200,17 +177,6 @@ export const MessagesView: React.FC = () => {
             )}
           </button>
 
-          <button
-            onClick={() => setActiveTabMode('channels')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              activeTabMode === 'channels'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-            }`}
-          >
-            <Hash className="w-3.5 h-3.5" />
-            <span>Study Channels</span>
-          </button>
 
           {blockedFriends.length > 0 && (
             <button
@@ -1059,127 +1025,7 @@ export const MessagesView: React.FC = () => {
         </div>
       )}
 
-      {/* Mode 3: Channels */}
-      {activeTabMode === 'channels' && (
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/60 dark:bg-slate-900/60">
-            <div className="p-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <Hash className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Campus Study Rooms</span>
-              </h3>
-            </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {studyChannels.map((ch) => {
-                const isActive = activeChannel === ch.id;
-                return (
-                  <button
-                    key={ch.id}
-                    onClick={() => setActiveChannel(ch.id)}
-                    className={`w-full text-left p-3 rounded-xl transition-all flex items-center justify-between ${
-                      isActive
-                        ? 'bg-white dark:bg-slate-800 border border-indigo-500 shadow-xs'
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
-                    }`}
-                  >
-                    <div>
-                      <h4
-                        className={`text-xs font-bold ${
-                          isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'
-                        }`}
-                      >
-                        #{ch.name}
-                      </h4>
-                      <p className="text-[10px] text-slate-500">{ch.title}</p>
-                    </div>
-                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
-                      {ch.members} peers
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
-
-          <div className="flex-1 flex flex-col bg-white dark:bg-slate-900">
-            <div className="p-3.5 px-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/60">
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
-                  <Hash className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{currentChannelObj.name}</span>
-                </h3>
-                <p className="text-[11px] text-slate-500">{currentChannelObj.title}</p>
-              </div>
-              <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                {currentChannelObj.members} Active Online
-              </span>
-            </div>
-
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/30 dark:bg-slate-950/40">
-              {chatMessages
-                .filter((m) => m.channelId === activeChannel || m.senderRole === 'system')
-                .map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex gap-3 ${msg.isCurrentUser ? 'flex-row-reverse' : ''}`}
-                  >
-                    <img
-                      src={
-                        msg.senderAvatar ||
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
-                      }
-                      alt={msg.senderName}
-                      className="w-8 h-8 rounded-full object-cover shrink-0 border border-indigo-500"
-                    />
-                    <div
-                      className={`flex flex-col max-w-[80%] ${
-                        msg.isCurrentUser ? 'items-end' : 'items-start'
-                      }`}
-                    >
-                      <div className="flex items-baseline gap-2 mb-1">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white">
-                          {msg.senderName}
-                        </span>
-                        <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
-                      </div>
-                      <div
-                        className={`p-3.5 rounded-xl text-xs leading-relaxed ${
-                          msg.isCurrentUser
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-2xs'
-                        }`}
-                      >
-                        <p>{msg.text}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-
-            <form
-              onSubmit={handleSendChannelMsg}
-              className="p-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex gap-2"
-            >
-              <input
-                type="text"
-                placeholder={`Message #${currentChannelObj.name}...`}
-                value={channelInput}
-                onChange={(e) => setChannelInput(e.target.value)}
-                className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:border-indigo-500"
-              />
-              <button
-                type="submit"
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors active:scale-98"
-              >
-                <span>Send</span>
-                <Send className="w-3.5 h-3.5" />
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Mode 4: Blocked Users */}
       {activeTabMode === 'blocked' && (

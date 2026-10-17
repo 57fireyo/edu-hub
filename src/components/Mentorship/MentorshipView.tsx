@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export const MentorshipView: React.FC = () => {
-  const { mentors, setSelectedMentorForBooking, bookedSessions, setActiveTab, setActiveChannel } =
+  const { mentors, setSelectedMentorForBooking, bookedSessions, setActiveTab } =
     useApp();
   const { user } = useAuth();
 
@@ -70,7 +70,6 @@ export const MentorshipView: React.FC = () => {
                 <button
                   onClick={() => {
                     setActiveTab('code-editor');
-                    setActiveChannel('mentor-dr-chen');
                   }}
                   className="px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
                 >
@@ -160,8 +159,7 @@ export const MentorshipView: React.FC = () => {
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
                 <button
                   onClick={() => {
-                    setActiveTab('code-editor');
-                    setActiveChannel('mentor-dr-chen');
+                    setActiveTab('messages');
                   }}
                   className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors"
                   title="Direct Message"

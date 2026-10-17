@@ -214,8 +214,8 @@ interface AppContextType {
       bio?: string;
     }
   ) => void;
-  activeMessagesSubTab: 'groups' | 'dms' | 'search' | 'friends' | 'channels' | 'blocked';
-  setActiveMessagesSubTab: (tab: 'groups' | 'dms' | 'search' | 'friends' | 'channels' | 'blocked') => void;
+  activeMessagesSubTab: 'groups' | 'dms' | 'search' | 'friends' | 'blocked';
+  setActiveMessagesSubTab: (tab: 'groups' | 'dms' | 'search' | 'friends' | 'blocked') => void;
 
   // Collaboration Chat (Channels)
   chatMessages: ChatMessage[];
@@ -521,7 +521,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return initialCampusDirectoryUsers;
   });
 
-  const [activeMessagesSubTab, setActiveMessagesSubTab] = useState<'groups' | 'dms' | 'search' | 'friends' | 'channels' | 'blocked'>('search');
+  const [activeMessagesSubTab, setActiveMessagesSubTab] = useState<'groups' | 'dms' | 'search' | 'friends' | 'blocked'>('groups');
 
   // Reports
   const [reports, setReports] = useState<ContentReport[]>(() => {
