@@ -87,6 +87,7 @@ export type NavigationTab =
   | 'code-editor'
   | 'freelance'
   | 'messages'
+  | 'meetings'
   | 'settings'
   | 'help'
   | 'owner-portal';
@@ -353,7 +354,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         timestamp: 'Today at 09:30 AM',
         createdAt: Date.now() - 3600000,
         metadata: {
-          fileUrl: 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf',
+          fileUrl: '/dsa-all-practicals.pdf',
         },
       },
       {
@@ -829,9 +830,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Resources
   const addResource = (resData: Omit<ResourceItem, 'id' | 'rating' | 'viewCount' | 'likesCount' | 'reviewsCount'>) => {
+    const yr = resData.year || resData.academicYear || '2nd Year';
     const newResource: ResourceItem = {
       ...resData,
       id: `res-${Date.now()}`,
+      year: yr,
+      academicYear: yr,
       rating: 5.0,
       viewCount: 1,
       views: '1 view',

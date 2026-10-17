@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config({ override: true });
+
 import express from 'express';
 import http from 'http';
 import path from 'path';
@@ -21,8 +24,8 @@ async function startServer() {
 
   // Middleware
   app.use(cors());
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // In-memory data store for server-side API sync
   let projectCredits = {
@@ -659,8 +662,8 @@ Please provide:
       author: 'Prof. Alan Turing',
       authorRole: 'faculty',
       authorId: 'fac-02',
-      url: 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf',
-      downloadUrl: 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf',
+      url: '/dsa-all-practicals.pdf',
+      downloadUrl: '/dsa-all-practicals.pdf',
       fileSize: '8.4 MB',
       rating: 5.0,
       likesCount: 384,
@@ -790,6 +793,88 @@ Please provide:
     resourcesDb = resourcesDb.filter((r) => r.id !== req.params.id);
     if (resourcesDb.length === initialLen) return res.status(404).json({ success: false, message: 'Resource not found' });
     res.json({ success: true, message: 'Resource deleted successfully' });
+  });
+
+  // Dedicated PDF File Upload & Streaming Endpoints
+  const PDF_STORAGE_DIR = path.join(process.cwd(), 'data', 'storage', 'resources');
+  if (!fs.existsSync(PDF_STORAGE_DIR)) {
+    fs.mkdirSync(PDF_STORAGE_DIR, { recursive: true });
+  }
+
+  app.post('/api/resources/upload-file', async (req, res) => {
+    try {
+      const { fileName, fileBase64, fileSize } = req.body;
+      if (!fileBase64) {
+        return res.status(400).json({ success: false, message: 'PDF file payload is required' });
+      }
+
+      const cleanBase64 = fileBase64.replace(/^data:[^;]+;base64,/, '').replace(/\s+/g, '');
+      const fileBuffer = Buffer.from(cleanBase64, 'base64');
+
+      const safeName = (fileName || 'academic-document.pdf').replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const fileId = `pdf-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const savedFileName = `${fileId}-${safeName}`;
+      const filePath = path.join(PDF_STORAGE_DIR, savedFileName);
+
+      await fs.promises.writeFile(filePath, fileBuffer);
+
+      const url = `/api/resources/file/${fileId}`;
+      const downloadUrl = `/api/resources/file/${fileId}?download=true`;
+
+      res.status(201).json({
+        success: true,
+        fileId,
+        url,
+        downloadUrl,
+        fileName: safeName,
+        fileSize: fileSize || `${(fileBuffer.byteLength / (1024 * 1024)).toFixed(2)} MB`,
+      });
+    } catch (err: any) {
+      console.error('Error saving uploaded PDF:', err);
+      res.status(500).json({ success: false, message: err.message || 'Failed to upload PDF' });
+    }
+  });
+
+  app.get('/api/resources/file/:fileId', (req, res) => {
+    const { fileId } = req.params;
+    const isDownload = req.query.download === 'true' || req.query.action === 'download';
+
+    try {
+      const files = fs.readdirSync(PDF_STORAGE_DIR);
+      const matchedFile = files.find((f) => f.startsWith(`${fileId}-`) || f === `${fileId}.pdf` || f === fileId);
+
+      let targetPath = '';
+      let targetFileName = 'document.pdf';
+
+      if (matchedFile) {
+        targetPath = path.join(PDF_STORAGE_DIR, matchedFile);
+        targetFileName = matchedFile.replace(/^[^-]+-/, '') || 'document.pdf';
+      } else if (fileId === 'dsa' || fileId === 'res-dsa-pdf-1') {
+        targetPath = path.join(process.cwd(), 'public', 'dsa-all-practicals.pdf');
+        targetFileName = 'dsa-all-practicals.pdf';
+      } else {
+        targetPath = path.join(process.cwd(), 'public', 'dsa-all-practicals.pdf');
+        targetFileName = 'academic-compendium.pdf';
+      }
+
+      if (!fs.existsSync(targetPath)) {
+        return res.status(404).send('PDF document not found');
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Accept-Ranges', 'bytes');
+      if (isDownload) {
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(targetFileName)}"`);
+      } else {
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(targetFileName)}"`);
+      }
+
+      const stream = fs.createReadStream(targetPath);
+      stream.pipe(res);
+    } catch (err: any) {
+      console.error('Error serving PDF:', err);
+      res.status(500).send('Error serving file');
+    }
   });
 
   // Chat Groups & Messages Endpoints

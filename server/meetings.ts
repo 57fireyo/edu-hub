@@ -81,7 +81,10 @@ function resolveSupabaseConfig(rawUrl?: string, rawKey?: string): { url: string;
 
 // Initialize Supabase client if valid config is provided
 let supabase: SupabaseClient | null = null;
-const supabaseConfig = resolveSupabaseConfig(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabaseConfig = resolveSupabaseConfig(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+);
 if (supabaseConfig) {
   try {
     supabase = createClient(supabaseConfig.url, supabaseConfig.key, {

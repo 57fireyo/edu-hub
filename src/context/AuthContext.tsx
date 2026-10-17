@@ -1,9 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types';
 import { initialUser } from '../mockData';
-import { auth, db, googleAuthProvider, signInWithPopup } from '../lib/firebase';
-import { signInAnonymously, onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
+import {
+  signInAnonymously,
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+const googleAuthProvider = new GoogleAuthProvider();
 
 interface AuthContextType {
   user: UserProfile;

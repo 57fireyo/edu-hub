@@ -5,6 +5,14 @@ import { Breadcrumb } from '../Navigation/Breadcrumb';
 import { ManageAcademicStructureModal } from './ManageAcademicStructureModal';
 import { AddAcademicResourceModal } from './AddAcademicResourceModal';
 import { getYouTubeVideoId } from '../../lib/youtube';
+import { openPdfInNewTab, downloadPdfFile } from '../../lib/pdfHelper';
+import {
+  ACADEMIC_YEARS,
+  YEAR_SEMESTERS,
+  isYearMatch,
+  getDefaultSemesterForYear,
+  getResourceSemester,
+} from '../../lib/academicHelper';
 import {
   BookOpen,
   FileText,
@@ -53,47 +61,66 @@ export const ResourcesView: React.FC = () => {
     addActivityHistory,
   } = useApp();
 
-  // Academic Search & Hierarchy Filters (Year, Semester, Subject, Unit, Type)
-  const [selectedYear, setSelectedYear] = useState<string>('All');
-  const [selectedSemester, setSelectedSemester] = useState<string>('All');
+  // Academic Search & Hierarchy Filters (Year, Semester, Subject, Unit, Type) - NO "All Years" or "All Semesters"
+  const [selectedYear, setSelectedYear] = useState<string>('2nd Year');
+  const [selectedSemester, setSelectedSemester] = useState<string>('Semester 3');
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
   const [selectedUnit, setSelectedUnit] = useState<string>('All');
   const [typeFilter, setTypeFilter] = useState<'all' | 'pdf' | 'Video Lectures' | 'Articles'>('all');
   const [localSearch, setLocalSearch] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'likes' | 'newest'>('popular');
+  const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'rating' | 'likes'>('newest');
   const [onlySaved, setOnlySaved] = useState<boolean>(false);
 
   // Modals state
   const [isStructureModalOpen, setIsStructureModalOpen] = useState<boolean>(false);
   const [isAddResourceModalOpen, setIsAddResourceModalOpen] = useState<boolean>(false);
 
-  const semestersList = ['All', 'Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8'];
   const unitsList = ['All', 'Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5', 'Unit 6'];
 
-  // Subjects filtered by current year & semester selection (branch-agnostic)
+  // Subjects filtered strictly by current year & semester selection
   const availableSubjects = useMemo(() => {
     return academicSubjects.filter((subj) => {
-      const yearMatch = selectedYear === 'All' || subj.academicYear === selectedYear || subj.year === selectedYear;
-      const semMatch = selectedSemester === 'All' || subj.semester === selectedSemester;
+      const yearMatch = isYearMatch(subj.year, subj.academicYear, selectedYear);
+      const semMatch = !subj.semester || subj.semester === selectedSemester;
       return yearMatch && semMatch;
     });
   }, [academicSubjects, selectedYear, selectedSemester]);
 
-  // Overall filtering across academic parameters (no branch filtering)
+  // Overall filtering strictly constrained to the chosen Year and Semester section
   const filtered = resources.filter((item) => {
-    const matchesYear = selectedYear === 'All' || item.academicYear === selectedYear || item.year === selectedYear;
-    const matchesSemester = selectedSemester === 'All' || item.semester === selectedSemester;
-    const matchesSubject = selectedSubject === 'All' || item.subjectCode === selectedSubject;
+    // 1. Strict Year check: 2nd Year only shows in 2nd Year section, 1st Year in 1st Year, etc.
+    const matchesYear = isYearMatch(item.year, item.academicYear, selectedYear);
+    if (!matchesYear) return false;
+
+    // 2. Semester check within that Year (Strict: item must belong to the active semester)
+    const itemSem = getResourceSemester(item, academicSubjects);
+    const matchesSemester = itemSem === selectedSemester;
+    if (!matchesSemester) return false;
+
+    // 3. Subject check (All or case-insensitive matching)
+    const matchesSubject =
+      selectedSubject === 'All' ||
+      (item.subjectCode && item.subjectCode.toLowerCase() === selectedSubject.toLowerCase());
+    if (!matchesSubject) return false;
+
+    // 4. Syllabus Unit check
     const matchesUnit = selectedUnit === 'All' || (item.unitOrModule && item.unitOrModule.toLowerCase().includes(selectedUnit.toLowerCase()));
+    if (!matchesUnit) return false;
+
+    // 5. Resource type filter
     const isItemVideo = item.type === 'Video Lectures' || item.type === 'video' || !!item.videoUrl;
     const matchesType =
       typeFilter === 'all' ||
       (typeFilter === 'pdf' && (item.type === 'pdf' || item.type === 'Notes')) ||
       (typeFilter === 'Video Lectures' && isItemVideo) ||
       (typeFilter === 'Articles' && (item.type === 'article' || item.type === 'code' || item.type === 'Articles'));
-    const matchesSaved = !onlySaved || item.saved;
+    if (!matchesType) return false;
 
-    // Search text query
+    // 6. Bookmarked only
+    const matchesSaved = !onlySaved || item.saved;
+    if (!matchesSaved) return false;
+
+    // 7. Search text query
     const query = localSearch.trim().toLowerCase();
     const matchesSearch =
       !query ||
@@ -105,22 +132,28 @@ export const ResourcesView: React.FC = () => {
       (item.unitOrModule && item.unitOrModule.toLowerCase().includes(query)) ||
       (item.tags && item.tags.some((t) => t && t.toLowerCase().includes(query)));
 
-    return matchesYear && matchesSemester && matchesSubject && matchesUnit && matchesType && matchesSaved && matchesSearch;
+    return matchesSearch;
   });
 
   // Sorting
   const sortedResources = [...filtered].sort((a, b) => {
+    if (sortBy === 'newest') {
+      const timeA = parseInt((a.id || '').replace(/^res-/, '')) || 0;
+      const timeB = parseInt((b.id || '').replace(/^res-/, '')) || 0;
+      if (timeA || timeB) return timeB - timeA;
+      return 0;
+    }
     if (sortBy === 'popular') return (b.viewCount || 0) - (a.viewCount || 0);
     if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
     if (sortBy === 'likes') return (b.likesCount || 0) - (a.likesCount || 0);
     return 0;
   });
 
-  // Breadcrumb items calculation (no branch link)
+  // Breadcrumb items calculation
   const breadcrumbItems = [
     { label: 'Study Library' },
-    ...(selectedYear !== 'All' ? [{ label: selectedYear, onClick: () => { setSelectedSemester('All'); setSelectedSubject('All'); setSelectedUnit('All'); } }] : []),
-    ...(selectedSemester !== 'All' ? [{ label: selectedSemester, onClick: () => { setSelectedSubject('All'); setSelectedUnit('All'); } }] : []),
+    { label: selectedYear, onClick: () => { setSelectedSubject('All'); setSelectedUnit('All'); } },
+    { label: selectedSemester, onClick: () => { setSelectedSubject('All'); setSelectedUnit('All'); } },
     ...(selectedSubject !== 'All' ? [{ label: selectedSubject, onClick: () => setSelectedUnit('All') }] : []),
     ...(selectedUnit !== 'All' ? [{ label: selectedUnit }] : []),
   ];
@@ -213,69 +246,77 @@ export const ResourcesView: React.FC = () => {
 
       {/* Sequential Filter Architecture */}
       <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
-        {/* Level 1: Year Selector */}
-        <div className="space-y-1.5">
+        {/* Level 1: Year Selector (NO "All Years") */}
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-indigo-500" />
-              <span>1. Select Academic Year</span>
+              <span>1. Academic Year Section</span>
             </span>
-            {selectedYear !== 'All' && (
-              <button
-                onClick={() => setSelectedYear('All')}
-                className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline"
-              >
-                Reset Year
-              </button>
-            )}
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+              Active: {selectedYear}
+            </span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {['All', ...academicYears].map((yr) => (
-              <button
-                key={yr}
-                onClick={() => setSelectedYear(yr)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  selectedYear === yr
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {yr === 'All' ? 'All Years' : yr}
-              </button>
-            ))}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {ACADEMIC_YEARS.map((yr) => {
+              const isSelected = selectedYear === yr;
+              return (
+                <button
+                  key={yr}
+                  onClick={() => {
+                    setSelectedYear(yr);
+                    const defaultSem = getDefaultSemesterForYear(yr);
+                    setSelectedSemester(defaultSem);
+                    setSelectedSubject('All');
+                    setSelectedUnit('All');
+                  }}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-500/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Layers className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                  <span>{yr}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Level 2: Semester Selector */}
-        <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+        {/* Level 2: Semester Selector (NO "All Semesters") */}
+        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
-              <span>2. Semester</span>
+              <span>2. Semester ({selectedYear})</span>
             </span>
-            {selectedSemester !== 'All' && (
-              <button
-                onClick={() => setSelectedSemester('All')}
-                className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline"
-              >
-                Reset Semester
-              </button>
-            )}
+            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+              {selectedSemester}
+            </span>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {semestersList.map((sem) => (
-              <button
-                key={sem}
-                onClick={() => setSelectedSemester(sem)}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  selectedSemester === sem
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {sem === 'All' ? 'All Semesters' : sem}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            {(YEAR_SEMESTERS[selectedYear] || ['Semester 1', 'Semester 2']).map((sem) => {
+              const isSelected = selectedSemester === sem;
+              return (
+                <button
+                  key={sem}
+                  onClick={() => {
+                    setSelectedSemester(sem);
+                    setSelectedSubject('All');
+                    setSelectedUnit('All');
+                  }}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <GraduationCap className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-400 dark:text-indigo-600' : 'text-slate-400'}`} />
+                  <span>{sem}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -284,7 +325,7 @@ export const ResourcesView: React.FC = () => {
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-              <span>3. Course Subject (e.g. DSA, CAN, ISE)</span>
+              <span>3. Course Subject ({selectedSemester})</span>
             </span>
             {isOwner && (
               <button
@@ -301,11 +342,11 @@ export const ResourcesView: React.FC = () => {
               onClick={() => setSelectedSubject('All')}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedSubject === 'All'
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              All Subjects
+              All {selectedSemester} Subjects
             </button>
             {availableSubjects.map((subj) => (
               <button
@@ -435,6 +476,7 @@ export const ResourcesView: React.FC = () => {
               onChange={(e) => setSortBy(e.target.value as any)}
               className="bg-transparent text-slate-700 dark:text-slate-300 font-semibold focus:outline-hidden cursor-pointer"
             >
+              <option value="newest">Recently Added</option>
               <option value="popular">Most Popular</option>
               <option value="rating">Top Rated</option>
               <option value="likes">Most Liked</option>
@@ -626,36 +668,53 @@ export const ResourcesView: React.FC = () => {
                           <PlayCircle className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">YouTube</span>
                         </a>
-                      ) : (
-                        <a
-                          href={
-                            item.id === 'res-dsa-pdf-1' || item.subjectCode === 'DSA'
-                              ? 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf'
-                              : item.fileUrl || item.downloadUrl || item.url || 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf'
-                          }
-                          download="dsa all practicals.pdf"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
-                          title="Download PDF"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addActivityHistory({
-                              type: 'download',
-                              title: item.title,
-                              subtitle: `Downloaded ${item.type.toUpperCase()} • ${item.subjectCode || 'Academic'}`,
-                              metadata: {
-                                fileUrl:
-                                  item.id === 'res-dsa-pdf-1' || item.subjectCode === 'DSA'
-                                    ? 'https://slosofqdfxelmonorspt.supabase.co/storage/v1/object/public/BHAVESH%20RAVINDRA%20DHAWALE/dsa%20all%20practicals.pdf'
-                                    : item.fileUrl || item.downloadUrl || item.url,
-                              },
-                            });
-                          }}
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
-                      )}
+                      ) : (() => {
+                        const rawUrl = item.fileUrl || item.downloadUrl || item.url || '/dsa-all-practicals.pdf';
+                        const activePdfUrl = rawUrl.includes('slosofqdfxelmonorspt') ? '/dsa-all-practicals.pdf' : rawUrl;
+                        const docName = item.fileName || `${item.title}.pdf`;
+
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPdfInNewTab(activePdfUrl, docName);
+                                addActivityHistory({
+                                  type: 'download',
+                                  title: item.title,
+                                  subtitle: `Reviewed ${item.type.toUpperCase()} in new tab`,
+                                  metadata: { fileUrl: activePdfUrl },
+                                });
+                              }}
+                              className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Review / Open PDF in new tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span className="hidden xl:inline text-[11px]">Review</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadPdfFile(activePdfUrl, docName);
+                                showToast(`Downloading "${docName}"...`);
+                                addActivityHistory({
+                                  type: 'download',
+                                  title: item.title,
+                                  subtitle: `Downloaded ${item.type.toUpperCase()} • ${item.subjectCode || 'Academic'}`,
+                                  metadata: { fileUrl: activePdfUrl },
+                                });
+                              }}
+                              className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Download PDF"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        );
+                      })()}
                       <button
                         onClick={() => setViewingResource(item)}
                         className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-2xs active:scale-98 cursor-pointer"
@@ -681,9 +740,17 @@ export const ResourcesView: React.FC = () => {
       <AddAcademicResourceModal
         isOpen={isAddResourceModalOpen}
         onClose={() => setIsAddResourceModalOpen(false)}
-        defaultYear={selectedYear !== 'All' ? selectedYear : '2nd Year'}
+        defaultYear={selectedYear}
+        defaultSemester={selectedSemester}
         defaultBranch="CY"
-        defaultSubject={selectedSubject !== 'All' ? selectedSubject : 'DSA'}
+        defaultSubject={selectedSubject !== 'All' ? selectedSubject : availableSubjects[0]?.code || 'DSA'}
+        onUploaded={(details) => {
+          setSelectedYear(details.year);
+          setSelectedSemester(details.semester);
+          setSelectedSubject(details.subjectCode);
+          setSelectedUnit('All');
+          setSortBy('newest');
+        }}
       />
     </div>
   );

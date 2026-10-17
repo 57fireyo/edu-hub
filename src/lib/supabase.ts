@@ -1,9 +1,9 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Default Supabase project configuration for EduHub
-const DEFAULT_SUPABASE_URL = 'https://slosofqdfxelmonorspt.supabase.co';
+const DEFAULT_SUPABASE_URL = 'https://tzevfsddnvdpjeiszulv.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
-  'sb_publishable_m_LgqoY8RX6pzxeCRLtJTw_h5heX-mx';
+  'sb_publishable_m7Rkd6QFwyuFUow73hppJw_bd5idwrw';
 
 /**
  * Validates and normalizes the Supabase URL.

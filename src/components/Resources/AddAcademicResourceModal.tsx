@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -13,24 +13,38 @@ import {
   BookOpen,
   CheckCircle2,
   Sparkles,
+  ExternalLink,
+  Loader2,
+  Eye,
 } from 'lucide-react';
 import { ResourceType, ResourceItem } from '../../types';
 import { getYouTubeVideoId } from '../../lib/youtube';
+import { openPdfInNewTab, uploadPdfToServer } from '../../lib/pdfHelper';
+import {
+  ACADEMIC_YEARS,
+  YEAR_SEMESTERS,
+  getDefaultSemesterForYear,
+  isYearMatch,
+} from '../../lib/academicHelper';
 
 interface AddAcademicResourceModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultYear?: string;
+  defaultSemester?: string;
   defaultBranch?: string;
   defaultSubject?: string;
+  onUploaded?: (details: { year: string; semester: string; subjectCode: string }) => void;
 }
 
 export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> = ({
   isOpen,
   onClose,
   defaultYear = '2nd Year',
+  defaultSemester,
   defaultBranch = 'CY',
   defaultSubject = 'DSA',
+  onUploaded,
 }) => {
   const { addResource, academicSubjects, academicBranches, academicYears, showToast } = useApp();
   const { user } = useAuth();
@@ -39,15 +53,52 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Algorithms');
-  const [year, setYear] = useState(defaultYear);
-  const [branch, setBranch] = useState(defaultBranch);
-  const [subjectCode, setSubjectCode] = useState(defaultSubject);
+  const [year, setYear] = useState<string>(defaultYear);
+  const [semester, setSemester] = useState<string>(
+    defaultSemester || getDefaultSemesterForYear(defaultYear)
+  );
+  const [branch, setBranch] = useState<string>(defaultBranch);
+  const [subjectCode, setSubjectCode] = useState<string>(defaultSubject);
+
+  const handleYearChange = (newYear: string) => {
+    setYear(newYear);
+    const availableSems = YEAR_SEMESTERS[newYear] || ['Semester 1'];
+    const newSem = availableSems[0];
+    setSemester(newSem);
+    const matching = academicSubjects.filter(
+      (s) => isYearMatch(s.year, s.academicYear, newYear) && s.semester === newSem
+    );
+    if (matching.length > 0) {
+      setSubjectCode(matching[0].code);
+    }
+  };
+
+  const handleSemesterChange = (newSem: string) => {
+    setSemester(newSem);
+    const matching = academicSubjects.filter(
+      (s) => isYearMatch(s.year, s.academicYear, year) && s.semester === newSem
+    );
+    if (matching.length > 0) {
+      setSubjectCode(matching[0].code);
+    }
+  };
+
+  const filteredSubjectsForUpload = useMemo(() => {
+    const list = academicSubjects.filter((s) => {
+      const yrMatch = isYearMatch(s.year, s.academicYear, year);
+      const semMatch = !s.semester || s.semester === semester;
+      return yrMatch && semMatch;
+    });
+    return list.length > 0 ? list : academicSubjects;
+  }, [academicSubjects, year, semester]);
 
   // PDF specific
   const [fileUrl, setFileUrl] = useState('');
+  const [downloadUrl, setDownloadUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState('');
   const [pageCount, setPageCount] = useState<number>(24);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
 
   // Video specific
   const [videoUrl, setVideoUrl] = useState('');
@@ -76,14 +127,25 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
     setTimestamps(timestamps.filter((_, i) => i !== idx));
   };
 
-  const handleSimulatedPdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setFileName(file.name);
-      setFileSize(`${(file.size / (1024 * 1024)).toFixed(1)} MB`);
-      setFileUrl(URL.createObjectURL(file));
-      if (!title) {
-        setTitle(file.name.replace(/\.[^/.]+$/, ''));
+      setIsUploadingPdf(true);
+      try {
+        const result = await uploadPdfToServer(file);
+        setFileName(result.fileName);
+        setFileSize(result.fileSize);
+        setFileUrl(result.url);
+        setDownloadUrl(result.downloadUrl);
+        if (!title) {
+          setTitle(file.name.replace(/\.[^/.]+$/, ''));
+        }
+        showToast(`✓ Attached and verified "${result.fileName}"`);
+      } catch (err) {
+        console.error('PDF upload error:', err);
+        showToast('PDF processing failed, please try again');
+      } finally {
+        setIsUploadingPdf(false);
       }
     }
   };
@@ -95,21 +157,28 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
       return;
     }
 
+    const finalFileUrl = fileUrl || '/dsa-all-practicals.pdf';
+    const finalDownloadUrl = downloadUrl || finalFileUrl;
+    const finalFileName = fileName || `${title.trim()}.pdf`;
+
     const newResourceItem: Omit<ResourceItem, 'id' | 'rating' | 'viewCount' | 'likesCount' | 'reviewsCount'> = {
       title: title.trim(),
-      description: description.trim() || `Course material for ${subjectCode} (${year}, Branch ${branch})`,
+      description: description.trim() || `Course material for ${subjectCode} (${year}, ${semester}, Branch ${branch})`,
       category,
       type: resourceType,
       author: user.name || 'Faculty Member',
       readTime: resourceType === 'Video Lectures' ? videoDuration : `${pageCount} pages`,
-      url: fileUrl || videoUrl || 'https://jdcoem.ac.in',
+      url: finalFileUrl,
+      downloadUrl: finalDownloadUrl,
+      fileUrl: finalFileUrl,
+      fileName: finalFileName,
+      fileSize: fileSize || '4.2 MB',
+      pageCount: pageCount || 24,
+      year: year,
       academicYear: year,
+      semester: semester,
       branch: branch,
       subjectCode: subjectCode,
-      fileUrl: fileUrl || undefined,
-      fileName: fileName || undefined,
-      fileSize: fileSize || undefined,
-      pageCount: pageCount || undefined,
       videoUrl: videoUrl || undefined,
       videoDuration: videoDuration || undefined,
       videoTimestamps: timestamps.length > 0 ? timestamps : undefined,
@@ -119,12 +188,18 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
       uploaderAvatar: user.avatar,
       uploaderRole: user.role === 'alumni' ? 'Alumni Mentor' : 'Faculty / Student',
       downloadCount: 0,
-      tags: [subjectCode, year, branch, resourceType],
+      tags: [subjectCode, year, semester, branch, resourceType],
     };
 
     addResource(newResourceItem);
-    showToast(`✓ Uploaded "${title.trim()}" to ${subjectCode} resources!`);
+    onUploaded?.({ year, semester, subjectCode });
+    showToast(`✓ Uploaded "${title.trim()}" to ${year} • ${semester} • ${subjectCode}! Opening review in new tab...`);
     onClose();
+
+    // Show review of that PDF in a new tab immediately
+    if (resourceType === 'pdf' || resourceType === 'Notes') {
+      openPdfInNewTab(finalFileUrl, finalFileName);
+    }
   };
 
   return (
@@ -191,26 +266,39 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
           </div>
 
           {/* Academic Target Hierarchy */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
             <div>
-              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year</label>
+              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">1. Academic Year</label>
               <select
                 value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="w-full mt-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-medium"
+                onChange={(e) => handleYearChange(e.target.value)}
+                className="w-full mt-1 px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-bold"
               >
-                {academicYears.map((yr) => (
+                {ACADEMIC_YEARS.map((yr) => (
                   <option key={yr} value={yr}>{yr}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Branch</label>
+              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">2. Semester</label>
+              <select
+                value={semester}
+                onChange={(e) => handleSemesterChange(e.target.value)}
+                className="w-full mt-1 px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-bold"
+              >
+                {(YEAR_SEMESTERS[year] || ['Semester 1', 'Semester 2']).map((sem) => (
+                  <option key={sem} value={sem}>{sem}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">3. Branch</label>
               <select
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
-                className="w-full mt-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-medium"
+                className="w-full mt-1 px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-medium"
               >
                 {academicBranches.map((b) => (
                   <option key={b.code} value={b.code}>{b.code} - {b.name}</option>
@@ -219,13 +307,13 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Target Subject</label>
+              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">4. Target Subject</label>
               <select
                 value={subjectCode}
                 onChange={(e) => setSubjectCode(e.target.value)}
-                className="w-full mt-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-bold"
+                className="w-full mt-1 px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-bold"
               >
-                {academicSubjects.map((s) => (
+                {filteredSubjectsForUpload.map((s) => (
                   <option key={s.id} value={s.code}>{s.code} - {s.name}</option>
                 ))}
               </select>
@@ -289,26 +377,57 @@ export const AddAcademicResourceModal: React.FC<AddAcademicResourceModalProps> =
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Attach Local PDF File</label>
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                      Attach Local PDF File (Notes / Manual)
+                    </label>
+                    {isUploadingPdf && (
+                      <span className="text-[10px] text-indigo-600 flex items-center gap-1 font-bold">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Uploading & verifying PDF...
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="file"
-                    accept=".pdf,.doc,.docx"
-                    onChange={handleSimulatedPdfUpload}
-                    className="w-full mt-1 text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                    accept=".pdf,application/pdf"
+                    onChange={handlePdfUpload}
+                    disabled={isUploadingPdf}
+                    className="w-full mt-1 text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer disabled:opacity-50"
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Upload your document directly in PDF format (.pdf)
+                  </p>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Or Online PDF / Google Drive URL</label>
-                  <input
-                    type="url"
-                    placeholder="https://drive.google.com/... or https://..."
-                    value={fileUrl}
-                    onChange={(e) => setFileUrl(e.target.value)}
-                    className="w-full mt-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white"
-                  />
-                </div>
+                {fileUrl && (
+                  <div className="sm:col-span-2 p-3 bg-indigo-50/80 dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 rounded-xl flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {fileName || 'Attached PDF Document'}
+                        </div>
+                        <div className="text-[11px] text-indigo-600 dark:text-indigo-400">
+                          {fileSize || 'Verified PDF'} • Ready to review
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openPdfInNewTab(fileUrl, fileName)}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 cursor-pointer active:scale-95"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Review in New Tab</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Page Count</label>
